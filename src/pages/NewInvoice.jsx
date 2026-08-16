@@ -1,0 +1,403 @@
+import React, { useMemo, useState } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { backend } from '../lib/store'
+import { generateNumber, typeMeta } from '../lib/numbers'
+import { buildEncryptedBlob, decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
+import { bdt } from '../lib/money'
+import { Btn, Field, inputCls, Card, ErrorBox, SectionTitle } from '../components/ui'
+
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function newItem(type) {
+  const base = { desc: '', qty: 1, unitPrice: '', taxPct: 0, total: 0 }
+  if (type === 'product') base.warranty = ''
+  if (type === 'repair') base.kind = 'labour'
+  return base
+}
+
+const TYPE_COLUMNS = {
+  service: [
+    { key: 'desc', label: 'Description', flex: '1' },
+    { key: 'qty', label: 'Qty', width: '4.5rem' },
+    { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
+    { key: 'total', label: 'Total', width: '7rem', readOnly: true },
+  ],
+  product: [
+    { key: 'desc', label: 'Description', flex: '1' },
+    { key: 'qty', label: 'Qty', width: '4.5rem' },
+    { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'warranty', label: 'Warranty', width: '6rem' },
+    { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
+    { key: 'total', label: 'Total', width: '7rem', readOnly: true },
+  ],
+  repair: [
+    { key: 'kind', label: 'Type', width: '6rem' },
+    { key: 'desc', label: 'Description', flex: '1' },
+    { key: 'qty', label: 'Qty', width: '4.5rem' },
+    { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
+    { key: 'total', label: 'Total', width: '7rem', readOnly: true },
+  ],
+}
+
+export default function NewInvoice() {
+  const { type } = useParams()
+  const navigate = useNavigate()
+  const meta = typeMeta(type)
+
+  const [client, setClient] = useState({ name: '', phone: '', address: '' })
+  const [date, setDate] = useState(today())
+  const [dueDate, setDueDate] = useState(today())
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [notes, setNotes] = useState('')
+  const [discount, setDiscount] = useState('')
+  const [repair, setRepair] = useState({ device: '', complaint: '', workDone: '' })
+  const [items, setItems] = useState([newItem(type)])
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(null)
+  const [previewState, setPreviewState] = useState(null)
+
+  const totals = useMemo(() => {
+    const subtotal = items.reduce(
+      (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
+      0,
+    )
+    const taxTotal = items.reduce(
+      (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) * ((Number(it.taxPct) || 0) / 100),
+      0,
+    )
+    const disc = Number(discount) || 0
+    return { subtotal, taxTotal, discount: disc, total: subtotal - disc + taxTotal }
+  }, [items, discount])
+
+  function patchItem(i, patch) {
+    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
+
+  function itemTotal(it) {
+    return (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)
+  }
+
+  function validate() {
+    if (!client.name.trim()) return 'Enter the client / company name (Billed To)'
+    if (type === 'repair' && !repair.device.trim()) return 'Enter the device / unit being repaired'
+    if (!items.length) return 'Add at least one line item'
+    for (const it of items) {
+      if (!it.desc.trim()) return 'Every line item needs a description'
+      if (!(Number(it.qty) > 0)) return 'Quantities must be greater than zero'
+      if (!(Number(it.unitPrice) >= 0)) return 'Unit prices must be zero or more'
+    }
+    return null
+  }
+
+  async function findFreeNumber() {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = generateNumber(type)
+      const existing = await backend.queryInvoices({ number: candidate })
+      if (!existing.length) return candidate
+    }
+    throw new Error('Could not generate a unique invoice number. Try again.')
+  }
+
+  function buildRecord(number) {
+    return {
+      number,
+      type,
+      date,
+      dueDate,
+      client,
+      paymentMethod,
+      notes,
+      discount: totals.discount,
+      subtotal: totals.subtotal,
+      taxTotal: totals.taxTotal,
+      total: totals.total,
+      repair: type === 'repair' ? repair : undefined,
+      items: items.map((it) => ({
+        desc: it.desc.trim(),
+        qty: Number(it.qty) || 0,
+        unitPrice: Number(it.unitPrice) || 0,
+        taxPct: Number(it.taxPct) || 0,
+        warranty: it.warranty?.trim() || '',
+        kind: it.kind || 'labour',
+        total: itemTotal(it),
+      })),
+      createdAt: Date.now(),
+    }
+  }
+
+  async function renderPdf(record) {
+    const encrypted = await buildEncryptedBlob(record)
+    return decryptToBlob(encrypted)
+  }
+
+  async function preview(e) {
+    e.preventDefault()
+    setError('')
+    const problem = validate()
+    if (problem) { setError(problem); return }
+    setBusy(true)
+    try {
+      const blob = await renderPdf(buildRecord('PREVIEW'))
+      setPreviewState({ url: URL.createObjectURL(blob), number: "PREVIEW" })
+    } catch (err) {
+      setError(err.message || 'Could not generate preview')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function save(e) {
+    e.preventDefault()
+    setError('')
+    const problem = validate()
+    if (problem) { setError(problem); return }
+    setBusy(true)
+    try {
+      const number = await findFreeNumber()
+      const record = buildRecord(number)
+      const encrypted = await buildEncryptedBlob(record)
+      const stored = await backend.saveInvoice({ ...record, blob: encrypted })
+      setSaved({ ...record, id: stored.id })
+    } catch (err) {
+      setError(err.message || 'Could not save invoice')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function viewSaved() {
+    if (!saved) return
+    const rec = await backend.getInvoice(saved.id)
+    if (!rec) { setError('Invoice not found'); return }
+    const blob = await decryptToBlob(rec.blob)
+    openBlob(blob)
+  }
+
+  async function downloadSaved() {
+    if (!saved) return
+    const rec = await backend.getInvoice(saved.id)
+    if (!rec) { setError('Invoice not found'); return }
+    const blob = await decryptToBlob(rec.blob)
+    downloadBlob(blob, `${saved.number}.pdf`)
+  }
+
+  if (saved) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <Card className="border-gold-300 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-7 w-7 text-emerald-600">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </div>
+          <h1 className="mt-4 text-xl font-bold text-navy-900">Invoice saved</h1>
+          <p className="mt-1 text-sm text-navy-500">
+            Your invoice has been compressed, encrypted and stored in the cloud.
+          </p>
+          <div className="mt-4 rounded-lg bg-navy-800 p-4 text-white">
+            <p className="text-xs tracking-widest text-gold-400 uppercase">Invoice number</p>
+            <p className="mt-1 font-mono text-2xl font-bold">{saved.number}</p>
+          </div>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Btn variant="gold" onClick={viewSaved}>View PDF</Btn>
+            <Btn variant="outline" onClick={downloadSaved}>Download</Btn>
+            <Btn variant="ghost" onClick={() => { setSaved(null); setItems([newItem(type)]) }}>New invoice</Btn>
+            <Btn variant="ghost" onClick={() => navigate('/')}>Dashboard</Btn>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  const cols = TYPE_COLUMNS[type]
+
+  return (
+    <div>
+      <SectionTitle sub={`Random number like ${typeMeta(type).prefix}-K7QX92 is generated on save.`}>
+        {meta.label}
+      </SectionTitle>
+
+      <form onSubmit={save} className="space-y-5">
+        <Card>
+          <h3 className="mb-3 text-xs font-bold tracking-wide text-navy-700 uppercase">Billed To</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Client / company name" className="sm:col-span-3">
+              <input className={inputCls} value={client.name} onChange={(e) => setClient({ ...client, name: e.target.value })} placeholder="e.g. Doctor's Healthcare LTD" />
+            </Field>
+            <Field label="Phone">
+              <input className={inputCls} value={client.phone} onChange={(e) => setClient({ ...client, phone: e.target.value })} placeholder="+880…" />
+            </Field>
+            <Field label="Address" className="sm:col-span-2">
+              <input className={inputCls} value={client.address} onChange={(e) => setClient({ ...client, address: e.target.value })} placeholder="Optional" />
+            </Field>
+            <Field label="Invoice date">
+              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Field label="Due date">
+              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </Field>
+            <Field label="Payment method">
+              <input className={inputCls} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} placeholder="Cash / bKash / Bank…" />
+            </Field>
+          </div>
+        </Card>
+
+        {type === 'repair' && (
+          <Card>
+            <h3 className="mb-3 text-xs font-bold tracking-wide text-navy-700 uppercase">Repair details</h3>
+            <div className="grid gap-3">
+              <Field label="Device / unit">
+                <input className={inputCls} value={repair.device} onChange={(e) => setRepair({ ...repair, device: e.target.value })} placeholder="e.g. HP ProBook 450 G8, Laptop" />
+              </Field>
+              <Field label="Reported issue (complaint)">
+                <input className={inputCls} value={repair.complaint} onChange={(e) => setRepair({ ...repair, complaint: e.target.value })} placeholder="e.g. Screen flickering, won't boot" />
+              </Field>
+              <Field label="Work performed">
+                <textarea className={inputCls} rows={2} value={repair.workDone} onChange={(e) => setRepair({ ...repair, workDone: e.target.value })} placeholder="e.g. Replaced display panel, updated drivers" />
+              </Field>
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Line items</h3>
+            <Btn type="button" variant="outline" onClick={() => setItems((p) => [...p, newItem(type)])}>
+              + Add item
+            </Btn>
+          </div>
+
+          <div className="space-y-2">
+            {items.map((it, i) => (
+              <div key={i} className="rounded-lg border border-navy-100 bg-navy-50/50 p-3">
+                <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-6">
+                  {cols.map((c) => {
+                    if (c.readOnly) {
+                      return (
+                        <Field key={c.key} label={c.label} className="hidden sm:block" >
+                          <div className="rounded-lg bg-navy-100 px-3 py-2.5 text-right text-sm font-semibold text-navy-800">
+                            {bdt(itemTotal(it))}
+                          </div>
+                        </Field>
+                      )
+                    }
+                    return (
+                      <Field key={c.key} label={c.label} className={c.flex ? 'col-span-2 sm:col-span-1' : ''}>
+                        {c.key === 'kind' ? (
+                          <select
+                            className={inputCls}
+                            value={it.kind}
+                            onChange={(e) => patchItem(i, { kind: e.target.value })}
+                          >
+                            <option value="labour">Labour</option>
+                            <option value="parts">Parts</option>
+                          </select>
+                        ) : (
+                          <input
+                            className={inputCls}
+                            type={c.key === 'qty' || c.key === 'unitPrice' || c.key === 'taxPct' ? 'number' : 'text'}
+                            min="0"
+                            step="any"
+                            value={it[c.key]}
+                            placeholder={c.key === 'warranty' ? '6 months' : ''}
+                            onChange={(e) => patchItem(i, { [c.key]: e.target.value })}
+                          />
+                        )}
+                      </Field>
+                    )
+                  })}
+                  <div className="flex items-end">
+                    <Btn
+                      type="button"
+                      variant="danger"
+                      className="px-3 py-2.5"
+                      onClick={() => setItems((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p))}
+                      disabled={items.length === 1}
+                    >
+                      Remove
+                    </Btn>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Discount (BDT)">
+              <input type="number" min="0" step="any" className={inputCls} value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
+            </Field>
+            <Field label="Notes">
+              <input className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, special instructions…" />
+            </Field>
+          </div>
+          <div className="mt-4 space-y-1.5 rounded-lg bg-navy-50 p-4 text-sm">
+            <div className="flex justify-between text-navy-600">
+              <span>Subtotal</span><span className="font-semibold">{bdt(totals.subtotal)}</span>
+            </div>
+            {totals.discount > 0 && (
+              <div className="flex justify-between text-navy-600">
+                <span>Discount</span><span className="font-semibold">- {bdt(totals.discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-navy-600">
+              <span>Tax</span><span className="font-semibold">{bdt(totals.taxTotal)}</span>
+            </div>
+            <div className="flex justify-between rounded-md bg-navy-800 px-3 py-2 text-white">
+              <span className="font-bold">Grand total</span>
+              <span className="font-bold">{bdt(totals.total)}</span>
+            </div>
+          </div>
+        </Card>
+
+        <ErrorBox>{error}</ErrorBox>
+
+        <div className="flex flex-wrap gap-2">
+          <Btn type="submit" variant="gold" disabled={busy} className="flex-1 sm:flex-none">
+            {busy ? 'Encrypting & saving…' : 'Save invoice'}
+          </Btn>
+          <Btn type="button" variant="outline" onClick={preview} disabled={busy}>
+            Preview PDF
+          </Btn>
+          <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-navy-700 transition hover:bg-navy-100">
+            Cancel
+          </Link>
+        </div>
+      </form>
+
+      {previewState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/70 p-3">
+          <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-navy-100 px-4 py-3">
+              <span className="text-sm font-bold text-navy-900">PDF preview — {previewState.number}</span>
+              <div className="flex gap-2">
+                <Btn variant="outline" className="!px-3 !py-1.5 text-xs" onClick={() => downloadBlobFromUrl(previewState.url, 'invoice-preview.pdf')}>
+                  Download
+                </Btn>
+                <Btn variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={() => { URL.revokeObjectURL(previewState.url); setPreviewState(null) }}>
+                  Close
+                </Btn>
+              </div>
+            </div>
+            <iframe title="Invoice preview" src={previewState.url} className="w-full flex-1" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+function downloadBlobFromUrl(url, filename) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+}
