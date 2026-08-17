@@ -37,7 +37,7 @@ function RecoveryScreen({ phrase, onDone }) {
   )
 }
 
-export default function Login({ onAuthed }) {
+export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -59,6 +59,7 @@ export default function Login({ onAuthed }) {
       return
     }
     setBusy(true)
+    onFlowStart?.()
     try {
       const res =
         mode === 'signup'
@@ -75,6 +76,7 @@ export default function Login({ onAuthed }) {
       setError(err.message || 'Something went wrong')
     } finally {
       setBusy(false)
+      onFlowEnd?.()
     }
   }
 

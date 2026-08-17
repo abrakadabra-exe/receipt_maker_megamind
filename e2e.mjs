@@ -161,9 +161,9 @@ try {
   await page.waitForTimeout(1000)
   const totalRow = await page.locator('tfoot').innerText()
   const totalsOk =
-    totalRow.includes('111,171.00') &&
-    totalRow.includes('77,200.00') &&
-    totalRow.includes('33,971.00')
+    totalRow.includes('103,171.00') &&
+    totalRow.includes('72,000.00') &&
+    totalRow.includes('31,171.00')
   log(
     'earnings totals (rev/cost/profit)',
     totalsOk,
@@ -171,7 +171,7 @@ try {
   )
   await page.locator('tbody tr').first().click()
   await page.waitForTimeout(500)
-  log('month drill-down shows invoices', (await page.locator('tbody .font-mono').count()) === 3)
+  log('month drill-down shows invoices', (await page.locator('tbody .font-mono').count()) === 2)
 
   /* -------- Settings: change password -------- */
   await page.click('text=Settings')

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { backend } from './lib/store'
 import { setMasterKey, clearMasterKey, hasMasterKey } from './lib/session'
@@ -56,10 +56,13 @@ function AppShell() {
   const [ready, setReady] = useState(false)
   const location = useLocation()
 
+  const authLockRef = useRef(false)
+
   useEffect(() => {
     const unsub = backend.onAuthChange((u) => {
-      setUser(u)
       setReady(true)
+      if (authLockRef.current) return
+      setUser(u)
     })
     return () => unsub()
   }, [])
@@ -84,8 +87,14 @@ function AppShell() {
   if (!user) {
     return (
       <Login
-        onAuthed={() => {
-          setUser(backend.getCurrentUser())
+        onAuthed={async () => {
+          setUser(await backend.getCurrentUser())
+        }}
+        onFlowStart={() => {
+          authLockRef.current = true
+        }}
+        onFlowEnd={() => {
+          authLockRef.current = false
         }}
       />
     )

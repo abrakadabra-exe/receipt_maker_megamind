@@ -189,8 +189,10 @@ const fb = {
     const { signOut } = await import('firebase/auth')
     await signOut(auth)
   },
-  getCurrentUser() {
-    return null
+  async getCurrentUser() {
+    const { auth } = await getFirebase()
+    const u = auth.currentUser
+    return u ? { uid: u.uid, email: u.email } : null
   },
   async onAuthChange(cb) {
     const { auth } = await getFirebase()
@@ -213,7 +215,7 @@ const fb = {
   async saveInvoice(record) {
     const uid = await fbCurrentUid()
     const { db } = await getFirebase()
-    const { doc, setDoc } = await import('firebase/firestore')
+    const { doc, setDoc, Bytes } = await import('firebase/firestore')
     const id = record.id || crypto.randomUUID()
     const meta = { ...record, blob: undefined, id }
     await setDoc(doc(db, 'users', uid, 'invoices', id), {
@@ -227,7 +229,7 @@ const fb = {
       total: meta.total,
       costTotal: meta.costTotal || 0,
       createdAt: meta.createdAt,
-      blob: record.blob,
+      blob: record.blob ? Bytes.fromUint8Array(record.blob) : null,
     })
     return meta
   },
@@ -261,7 +263,7 @@ const fb = {
     const snap = await getDoc(doc(db, 'users', uid, 'invoices', id))
     if (!snap.exists()) return null
     const data = snap.data()
-    return { meta: { id, ...data, blob: undefined }, blob: new Uint8Array(data.blob) }
+    return { meta: { id, ...data, blob: undefined }, blob: data.blob ? data.blob.toUint8Array() : null }
   },
   async deleteInvoice(id) {
     const uid = await fbCurrentUid()
