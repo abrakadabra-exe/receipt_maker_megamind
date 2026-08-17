@@ -152,13 +152,13 @@ export default function Search() {
                 </span>
               </p>
               <div className="mt-2 flex gap-1.5">
-                <Btn variant="outline" className="!px-3 !py-1.5 text-xs" disabled={busyId === r.id} onClick={() => view(r.id)}>
+                <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => view(r.id)}>
                   View
                 </Btn>
-                <Btn variant="outline" className="!px-3 !py-1.5 text-xs" disabled={busyId === r.id} onClick={() => download(r.id)}>
+                <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => download(r.id)}>
                   PDF
                 </Btn>
-                <Btn variant="danger" className="!px-3 !py-1.5 text-xs" disabled={busyId === r.id} onClick={() => remove(r.id)}>
+                <Btn variant="danger" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => remove(r.id)}>
                   Delete
                 </Btn>
               </div>

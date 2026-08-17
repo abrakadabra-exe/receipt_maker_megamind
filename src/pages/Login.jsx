@@ -95,8 +95,9 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
   return (
     <div className="mx-auto mt-10 w-full max-w-md px-4">
       <div className="mb-6 text-center">
-        <img src={logoUrl} alt="Megamind BD" className="mx-auto h-12 w-auto" />
-        <h1 className="mt-3 text-xl font-bold text-navy-900">Megamind BD Invoice</h1>
+        <div className="mx-auto flex w-fit items-center rounded-2xl bg-white p-2 shadow-md ring-1 ring-purple-100">
+          <img src={logoUrl} alt="Megamind BD" className="h-10 w-auto sm:h-12" />
+        </div>
         <p className="mt-1 text-sm text-navy-500">
           Professional invoices, securely stored
         </p>

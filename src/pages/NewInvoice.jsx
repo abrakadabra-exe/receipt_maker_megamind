@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { generateNumber, typeMeta } from '../lib/numbers'
@@ -63,6 +63,12 @@ export default function NewInvoice() {
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(null)
   const [previewState, setPreviewState] = useState(null)
+
+  useEffect(() => {
+    setSaved(null)
+    setPreviewState(null)
+    setError('')
+  }, [type])
 
   const totals = useMemo(() => {
     const subtotal = items.reduce(
@@ -297,7 +303,7 @@ export default function NewInvoice() {
                   {cols.map((c) => {
                     if (c.readOnly) {
                       return (
-                        <Field key={c.key} label={c.label} className="hidden sm:block" >
+                        <Field key={c.key} label={c.label} className="hidden sm:block">
                           <div className="rounded-lg bg-navy-100 px-3 py-2.5 text-right text-sm font-semibold text-navy-800">
                             {bdt(itemTotal(it))}
                           </div>
@@ -329,11 +335,26 @@ export default function NewInvoice() {
                       </Field>
                     )
                   })}
-                  <div className="flex items-end">
+                  <div className="hidden items-end sm:flex">
                     <Btn
                       type="button"
                       variant="danger"
                       className="px-3 py-2.5"
+                      onClick={() => setItems((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p))}
+                      disabled={items.length === 1}
+                    >
+                      Remove
+                    </Btn>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between border-t border-navy-100 pt-2 sm:hidden">
+                  <span className="text-xs font-semibold tracking-wide text-navy-600 uppercase">Total</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-navy-900">{bdt(itemTotal(it))}</span>
+                    <Btn
+                      type="button"
+                      variant="danger"
+                      className="!px-3 !py-2 text-xs"
                       onClick={() => setItems((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p))}
                       disabled={items.length === 1}
                     >
@@ -403,13 +424,13 @@ export default function NewInvoice() {
       {previewState && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/70 p-3">
           <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-navy-100 px-4 py-3">
-              <span className="text-sm font-bold text-navy-900">PDF preview — {previewState.number}</span>
+            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-navy-100 px-4 py-3">
+              <span className="min-w-0 truncate text-sm font-bold text-navy-900">PDF preview — {previewState.number}</span>
               <div className="flex gap-2">
-                <Btn variant="outline" className="!px-3 !py-1.5 text-xs" onClick={() => downloadBlobFromUrl(previewState.url, 'invoice-preview.pdf')}>
+                <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => downloadBlobFromUrl(previewState.url, 'invoice-preview.pdf')}>
                   Download
                 </Btn>
-                <Btn variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={() => { URL.revokeObjectURL(previewState.url); setPreviewState(null) }}>
+                <Btn variant="ghost" className="!px-3 !py-2 text-sm" onClick={() => { URL.revokeObjectURL(previewState.url); setPreviewState(null) }}>
                   Close
                 </Btn>
               </div>

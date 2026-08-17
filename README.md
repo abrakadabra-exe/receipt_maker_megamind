@@ -13,7 +13,8 @@ A web app we built for Megamind BD to handle invoicing the way we were already d
 - A clean, professional A4 PDF in navy and gold with the Megamind BD logo, letterhead, line-item tables, totals panel, amount in words, and the usual contact details in the footer (the same ones that were on the old receipts, so nothing changes for the client).
 - **Search** by invoice number (partial match works), date range, or type. You can view, download, or delete any invoice.
 - **Monthly earnings** — each line item can carry a cost price (your side only; it never appears on the client PDF). The Earnings page shows revenue, costs and profit per month, filterable by invoice type, with a drill-down list of every invoice in a month.
-- Works nicely on a phone too, so you can create an invoice while out with a client.
+- Works nicely on a phone too, so you can create an invoice while out with a client. On small screens the menu becomes a hamburger, and the three invoice types sit under a single "New Invoice" menu.
+- The app is branded with the Megamind BD logo and its purple colour, on screen and on the PDF letterhead.
 
 ## How the security works
 
@@ -74,6 +75,7 @@ git push -u origin main
 
 2. On GitHub go to **Settings → Pages → Source** and select **GitHub Actions**.
 3. After the first build finishes, the app is live at `https://<your-user>.github.io/<your-repo>/`.
+4. To use a custom domain, the repo already contains a `CNAME` file. Point the domain's DNS at GitHub Pages (four `A` records: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`), then set the custom domain in **Settings → Pages** and GitHub issues the HTTPS certificate automatically.
 
 ## Checking the build
 

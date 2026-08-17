@@ -35,7 +35,7 @@ export default function Settings({ user }) {
       <Card>
         <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Account</h3>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold text-navy-900">{user?.email}</span>
+          <span className="text-sm font-semibold break-all text-navy-900">{user?.email}</span>
           <Badge color={isDemoMode() ? 'gold' : 'green'}>
             {isDemoMode() ? 'Demo mode (browser storage)' : `Connected to ${backendName()}`}
           </Badge>

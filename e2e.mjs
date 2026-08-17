@@ -88,9 +88,12 @@ try {
   const buf = fs.readFileSync(await dl.path())
   log('downloaded PDF valid', buf.length > 1000 && buf.subarray(0, 5).toString() === '%PDF-', `${buf.length} bytes`)
 
-  /* -------- Product invoice (warranty) -------- */
+  /* -------- Product invoice (warranty, via header dropdown) -------- */
   await page.click('button:has-text("New invoice")')
-  await page.click('text=Product Sale')
+  await page.waitForTimeout(300)
+  const ddOpen = await page.locator('header [role="menu"] a').count()
+  log('new invoice dropdown opens', ddOpen === 3, `items = ${ddOpen}`)
+  await page.locator('header [role="menu"] a', { hasText: 'Product Sale' }).click()
   await page.waitForSelector('text=Product Sale Invoice')
   await page.fill('input[placeholder*="Doctor"]', 'Retail Client')
   await fillItem(0, { desc: 'Laptop 14" 8GB', qty: '2', price: '50000', cost: '35000', tax: '0', warranty: '1 year' })
@@ -101,9 +104,12 @@ try {
   const prodNumber = (await page.locator('.font-mono.text-2xl').innerText()).trim()
   log('product invoice saved', prodNumber.startsWith('PN-'), prodNumber)
 
-  /* -------- Repair invoice -------- */
-  await page.click('button:has-text("New invoice")')
-  await page.click('text=Repair')
+  /* -------- Repair invoice (via header dropdown) -------- */
+  await page.locator('header button[aria-haspopup="menu"]').click()
+  await page.waitForTimeout(300)
+  const ddItems = await page.locator('header [role="menu"] a').count()
+  log('new invoice dropdown has 3 options', ddItems === 3, `items = ${ddItems}`)
+  await page.locator('header [role="menu"] a', { hasText: 'Repair' }).click()
   await page.waitForSelector('text=Repair Service Invoice')
   await page.fill('input[placeholder*="Doctor"]', 'Walk-in Client')
   await page.fill('input[placeholder*="HP ProBook"]', 'HP ProBook 450 G8')
@@ -202,7 +208,27 @@ try {
   await page.waitForSelector('text=Welcome back', { timeout: 15000 })
   log('unlock screen after reload', true)
 
+  /* -------- Mobile: hamburger + submenu -------- */
+  await page.setViewportSize({ width: 375, height: 667 })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForSelector('text=Unlock your invoices', { timeout: 15000 })
+  await page.fill('input[type=password]', NEW_PASSWORD)
+  await page.click('button:has-text("Unlock")')
+  await page.waitForSelector('text=Welcome back', { timeout: 15000 })
+  const hamburger = page.locator('header button[aria-label="Menu"]')
+  log('mobile hamburger visible', await hamburger.isVisible())
+  await hamburger.click()
+  const mobileNav = page.locator('header nav:visible')
+  await mobileNav.getByText('New Invoice').click()
+  await page.waitForTimeout(400)
+  await mobileNav.getByText('Repair', { exact: true }).click()
+  await page.waitForSelector('text=Repair Service Invoice', { timeout: 10000 })
+  log('mobile submenu navigates to repair form', true)
+
   /* -------- Cleanup: delete the two remaining test invoices -------- */
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.locator('header a', { hasText: 'Search' }).first().click()
+  await page.waitForSelector('button:has-text("Delete")', { timeout: 10000 })
   for (let i = 0; i < 2; i++) {
     await page.click('text=Search invoices')
     await page.waitForSelector('button:has-text("Delete")', { timeout: 10000 })

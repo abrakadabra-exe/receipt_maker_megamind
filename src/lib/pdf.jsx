@@ -39,6 +39,7 @@ const NAVY = '#1b2a4a'
 const NAVY_LIGHT = '#f2f5fa'
 const GOLD = '#c9a227'
 const GOLD_DARK = '#a37f1f'
+const PURPLE = '#4C1489'
 const GRAY = '#6b7280'
 const LINE = '#d7dee9'
 
@@ -50,15 +51,20 @@ const styles = StyleSheet.create({
     padding: 36,
     paddingBottom: 78,
   },
-  headerRow: {
+  headerBand: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: PURPLE,
+    borderRadius: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
-  logo: { width: 122, marginBottom: 6 },
-  brandName: { fontSize: 19, fontWeight: 700, color: NAVY, letterSpacing: 0.4 },
-  tagline: { fontSize: 8.5, color: GOLD_DARK, fontWeight: 600, marginTop: 1 },
-  headerContact: { fontSize: 7.5, color: GRAY, marginTop: 6 },
+  logoChip: { backgroundColor: '#ffffff', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 6 },
+  logo: { width: 104 },
+  bandRight: { alignItems: 'flex-end' },
+  bandTitle: { color: '#ffffff', fontSize: 17, fontWeight: 700, letterSpacing: 2 },
+  bandContact: { color: '#e6d9ff', fontSize: 6.8, marginTop: 4 },
   invoiceTitle: { fontSize: 21, fontWeight: 700, color: NAVY, textAlign: 'right', letterSpacing: 1 },
   typeBadge: {
     alignSelf: 'flex-end',
@@ -216,19 +222,19 @@ function InvoiceDoc({ invoice }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.headerRow}>
-          <View>
+        <View style={styles.headerBand}>
+          <View style={styles.logoChip}>
             <Image src={logoUrl} style={styles.logo} />
-            <Text style={styles.brandName}>{COMPANY.name}</Text>
-            <Text style={styles.tagline}>{COMPANY.tagline}</Text>
-            <Text style={styles.headerContact}>
+          </View>
+          <View style={styles.bandRight}>
+            <Text style={styles.bandTitle}>INVOICE</Text>
+            <View style={styles.typeBadge}><Text>{meta.label.toUpperCase()}</Text></View>
+            <Text style={styles.bandContact}>
               {COMPANY.phone}  ·  {COMPANY.email}
             </Text>
           </View>
-          <View>
-            <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <View style={styles.typeBadge}><Text>{meta.label.toUpperCase()}</Text></View>
-            <View style={styles.metaBox}>
+        </View>
+        <View style={styles.metaBox}>
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Invoice No</Text>
                 <Text style={styles.metaValue}>{invoice.number}</Text>
@@ -242,8 +248,6 @@ function InvoiceDoc({ invoice }) {
                 <Text style={styles.metaValue}>{fmtDate(invoice.dueDate)}</Text>
               </View>
             </View>
-          </View>
-        </View>
 
         <View style={styles.goldRule} />
         <View style={styles.navyRule} />

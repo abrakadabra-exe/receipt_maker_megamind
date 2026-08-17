@@ -33,7 +33,7 @@ export default function Dashboard({ user }) {
     <div>
       <div className="rounded-xl bg-navy-800 p-6 text-white shadow-md">
         <p className="text-xs font-semibold tracking-widest text-gold-400 uppercase">Welcome back</p>
-        <h1 className="mt-1 text-2xl font-bold">{user?.email}</h1>
+        <h1 className="mt-1 text-2xl font-bold break-all">{user?.email}</h1>
         <p className="mt-2 text-sm text-navy-100">
           Create a new invoice or find an existing one. Every PDF is compressed,
           encrypted on this device and stored securely in the cloud.

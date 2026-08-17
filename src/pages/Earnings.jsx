@@ -101,7 +101,7 @@ export default function Earnings() {
 
       <Card>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <span className="mb-1 block text-xs font-semibold tracking-wide text-navy-700 uppercase">Invoice type</span>
             <select
               className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 shadow-sm outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-200"
@@ -183,7 +183,7 @@ export default function Earnings() {
                                   <span className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                                     {bdt(profit)}
                                   </span>
-                                  <Btn variant="outline" className="!px-3 !py-1.5 text-xs" disabled={busyId === inv.id} onClick={() => view(inv.id)}>
+                                  <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === inv.id} onClick={() => view(inv.id)}>
                                     View
                                   </Btn>
                                 </div>
