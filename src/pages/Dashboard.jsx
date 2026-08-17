@@ -55,15 +55,30 @@ export default function Dashboard({ user }) {
         ))}
       </div>
 
-      <h2 className="mt-8 mb-3 text-sm font-bold tracking-wide text-navy-700 uppercase">Find invoices</h2>
-      <Link
-        to="/search"
-        className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
-      >
-        <div className="text-gold-600">{ICONS.search}</div>
-        <h3 className="mt-3 font-bold text-navy-900">Search invoices</h3>
-        <p className="mt-1 text-xs text-navy-500">By invoice number, date range or type</p>
-      </Link>
+      <h2 className="mt-8 mb-3 text-sm font-bold tracking-wide text-navy-700 uppercase">Business</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          to="/search"
+          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
+        >
+          <div className="text-gold-600">{ICONS.search}</div>
+          <h3 className="mt-3 font-bold text-navy-900">Search invoices</h3>
+          <p className="mt-1 text-xs text-navy-500">By invoice number, date range or type</p>
+        </Link>
+        <Link
+          to="/earnings"
+          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
+        >
+          <div className="text-gold-600">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-8 w-8">
+              <path d="M3 3v18h18" />
+              <path d="M7 15l4-4 3 3 5-6" />
+            </svg>
+          </div>
+          <h3 className="mt-3 font-bold text-navy-900">Monthly earnings</h3>
+          <p className="mt-1 text-xs text-navy-500">Revenue, costs and profit by month</p>
+        </Link>
+      </div>
     </div>
   )
 }

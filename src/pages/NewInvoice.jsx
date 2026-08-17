@@ -11,7 +11,7 @@ function today() {
 }
 
 function newItem(type) {
-  const base = { desc: '', qty: 1, unitPrice: '', taxPct: 0, total: 0 }
+  const base = { desc: '', qty: 1, unitPrice: '', costPrice: '', taxPct: 0, total: 0 }
   if (type === 'product') base.warranty = ''
   if (type === 'repair') base.kind = 'labour'
   return base
@@ -22,6 +22,7 @@ const TYPE_COLUMNS = {
     { key: 'desc', label: 'Description', flex: '1' },
     { key: 'qty', label: 'Qty', width: '4.5rem' },
     { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'costPrice', label: 'Cost price (BDT)', width: '7rem' },
     { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
     { key: 'total', label: 'Total', width: '7rem', readOnly: true },
   ],
@@ -29,6 +30,7 @@ const TYPE_COLUMNS = {
     { key: 'desc', label: 'Description', flex: '1' },
     { key: 'qty', label: 'Qty', width: '4.5rem' },
     { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'costPrice', label: 'Cost price (BDT)', width: '7rem' },
     { key: 'warranty', label: 'Warranty', width: '6rem' },
     { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
     { key: 'total', label: 'Total', width: '7rem', readOnly: true },
@@ -38,6 +40,7 @@ const TYPE_COLUMNS = {
     { key: 'desc', label: 'Description', flex: '1' },
     { key: 'qty', label: 'Qty', width: '4.5rem' },
     { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
+    { key: 'costPrice', label: 'Cost price (BDT)', width: '7rem' },
     { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
     { key: 'total', label: 'Total', width: '7rem', readOnly: true },
   ],
@@ -66,12 +69,23 @@ export default function NewInvoice() {
       (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
       0,
     )
+    const costTotal = items.reduce(
+      (s, it) => s + (Number(it.qty) || 0) * (Number(it.costPrice) || 0),
+      0,
+    )
     const taxTotal = items.reduce(
       (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) * ((Number(it.taxPct) || 0) / 100),
       0,
     )
     const disc = Number(discount) || 0
-    return { subtotal, taxTotal, discount: disc, total: subtotal - disc + taxTotal }
+    return {
+      subtotal,
+      costTotal,
+      taxTotal,
+      discount: disc,
+      total: subtotal - disc + taxTotal,
+      profit: subtotal - disc + taxTotal - costTotal,
+    }
   }, [items, discount])
 
   function patchItem(i, patch) {
@@ -82,6 +96,7 @@ export default function NewInvoice() {
     return (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)
   }
 
+
   function validate() {
     if (!client.name.trim()) return 'Enter the client / company name (Billed To)'
     if (type === 'repair' && !repair.device.trim()) return 'Enter the device / unit being repaired'
@@ -90,6 +105,7 @@ export default function NewInvoice() {
       if (!it.desc.trim()) return 'Every line item needs a description'
       if (!(Number(it.qty) > 0)) return 'Quantities must be greater than zero'
       if (!(Number(it.unitPrice) >= 0)) return 'Unit prices must be zero or more'
+      if (!(Number(it.costPrice) >= 0)) return 'Cost prices must be zero or more'
     }
     return null
   }
@@ -115,12 +131,14 @@ export default function NewInvoice() {
       discount: totals.discount,
       subtotal: totals.subtotal,
       taxTotal: totals.taxTotal,
+      costTotal: totals.costTotal,
       total: totals.total,
       repair: type === 'repair' ? repair : undefined,
       items: items.map((it) => ({
         desc: it.desc.trim(),
         qty: Number(it.qty) || 0,
         unitPrice: Number(it.unitPrice) || 0,
+        costPrice: Number(it.costPrice) || 0,
         taxPct: Number(it.taxPct) || 0,
         warranty: it.warranty?.trim() || '',
         kind: it.kind || 'labour',
@@ -275,7 +293,7 @@ export default function NewInvoice() {
           <div className="space-y-2">
             {items.map((it, i) => (
               <div key={i} className="rounded-lg border border-navy-100 bg-navy-50/50 p-3">
-                <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-6">
+                <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-7">
                   {cols.map((c) => {
                     if (c.readOnly) {
                       return (
@@ -352,6 +370,17 @@ export default function NewInvoice() {
             <div className="flex justify-between rounded-md bg-navy-800 px-3 py-2 text-white">
               <span className="font-bold">Grand total</span>
               <span className="font-bold">{bdt(totals.total)}</span>
+            </div>
+            <div className="mt-2 border-t border-navy-200 pt-2">
+              <div className="flex justify-between text-navy-600">
+                <span>Total cost (your side)</span><span className="font-semibold">{bdt(totals.costTotal)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-emerald-700">
+                <span>Est. profit</span><span>{bdt(totals.profit)}</span>
+              </div>
+              <p className="pt-1 text-[11px] text-navy-400">
+                Cost and profit never appear on the client PDF.
+              </p>
             </div>
           </div>
         </Card>

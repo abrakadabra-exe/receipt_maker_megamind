@@ -225,6 +225,7 @@ const fb = {
       date: meta.date,
       dueDate: meta.dueDate,
       total: meta.total,
+      costTotal: meta.costTotal || 0,
       createdAt: meta.createdAt,
       blob: record.blob,
     })

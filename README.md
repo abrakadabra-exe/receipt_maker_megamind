@@ -12,6 +12,7 @@ A web app we built for Megamind BD to handle invoicing the way we were already d
 - Invoice numbers are random and checked for uniqueness, so they never clash.
 - A clean, professional A4 PDF in navy and gold with the Megamind BD logo, letterhead, line-item tables, totals panel, amount in words, and the usual contact details in the footer (the same ones that were on the old receipts, so nothing changes for the client).
 - **Search** by invoice number (partial match works), date range, or type. You can view, download, or delete any invoice.
+- **Monthly earnings** — each line item can carry a cost price (your side only; it never appears on the client PDF). The Earnings page shows revenue, costs and profit per month, filterable by invoice type, with a drill-down list of every invoice in a month.
 - Works nicely on a phone too, so you can create an invoice while out with a client.
 
 ## How the security works

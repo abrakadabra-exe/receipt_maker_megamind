@@ -1,7 +1,7 @@
 import { firefox } from 'playwright'
 
 const BASE = 'http://localhost:4173/'
-const EMAIL = 'boss@megamindbd.test'
+const EMAIL = `boss-${Date.now()}@megamindbd.test`
 const PASSWORD = 'TestPass123!'
 const NEW_PASSWORD = 'NewPass456!'
 
@@ -25,18 +25,20 @@ function field(label, row = 0) {
   return page.locator('label', { hasText: label }).nth(row).locator('input, select')
 }
 
-async function fillItem(row, { desc, qty, price, tax, warranty = null, kind = null }) {
+async function fillItem(row, { desc, qty, price, cost, tax, warranty = null, kind = null }) {
   if (kind) await field('Type', row).selectOption(kind)
   if (desc) await field('Description', row).fill(desc)
   if (warranty) await field('Warranty', row).fill(warranty)
   if (qty) await field('Qty', row).fill(qty)
   if (price) await field('Unit price', row).fill(price)
+  if (cost) await field('Cost price', row).fill(cost)
   if (tax) await field('Tax %', row).fill(tax)
 }
 
 try {
   await page.goto(BASE, { waitUntil: 'networkidle' })
-  log('app loads', (await page.locator('text=Create account').count()) > 0)
+  await page.waitForSelector('text=Create account', { timeout: 15000 })
+  log('app loads', true)
 
   await page.click('text=Create account')
   await page.fill('input[type=email]', EMAIL)
@@ -59,7 +61,7 @@ try {
   await page.fill('input[placeholder="Optional"]', 'Dhaka, Bangladesh')
   await page.fill('input[placeholder*="Cash / bKash"]', 'bKash')
   await page.fill('input[placeholder*="Payment terms"]', 'Due on receipt')
-  await fillItem(0, { desc: 'FB BOOST 7 DAYS', qty: '1', price: '3020', tax: '5' })
+  await fillItem(0, { desc: 'FB BOOST 7 DAYS', qty: '1', price: '3020', cost: '2000', tax: '5' })
 
   const grand = await page.locator('div.bg-navy-800').innerText()
   log('totals computed', grand.includes('3,171.00'), grand.replace(/\n/g, ' | '))
@@ -91,7 +93,7 @@ try {
   await page.click('text=Product Sale')
   await page.waitForSelector('text=Product Sale Invoice')
   await page.fill('input[placeholder*="Doctor"]', 'Retail Client')
-  await fillItem(0, { desc: 'Laptop 14" 8GB', qty: '2', price: '50000', tax: '0', warranty: '1 year' })
+  await fillItem(0, { desc: 'Laptop 14" 8GB', qty: '2', price: '50000', cost: '35000', tax: '0', warranty: '1 year' })
   const pTotal = await page.locator('div.bg-navy-800').innerText()
   log('product totals (2×50000)', pTotal.includes('100,000.00'), pTotal.replace(/\n/g, ' | '))
   await page.click('button:has-text("Save invoice")')
@@ -107,9 +109,9 @@ try {
   await page.fill('input[placeholder*="HP ProBook"]', 'HP ProBook 450 G8')
   await page.fill('input[placeholder*="Screen flickering"]', 'No display')
   await page.fill('textarea[placeholder*="Replaced display"]', 'Replaced display panel')
-  await fillItem(0, { kind: 'labour', desc: 'Labour charge', qty: '1', price: '1500', tax: '0' })
+  await fillItem(0, { kind: 'labour', desc: 'Labour charge', qty: '1', price: '1500', cost: '1200', tax: '0' })
   await page.click('button:has-text("Add item")')
-  await fillItem(1, { kind: 'parts', desc: 'Display panel', qty: '1', price: '6500', tax: '0' })
+  await fillItem(1, { kind: 'parts', desc: 'Display panel', qty: '1', price: '6500', cost: '4000', tax: '0' })
   const rTotal = await page.locator('div.bg-navy-800').innerText()
   log('repair totals (labour+parts)', rTotal.includes('8,000.00'), rTotal.replace(/\n/g, ' | '))
   await page.click('button:has-text("Save invoice")')
@@ -152,6 +154,25 @@ try {
   await page.waitForTimeout(800)
   log('delete works', (await page.locator('.font-mono.text-sm').count()) === 2)
 
+  /* -------- Earnings -------- */
+  await page.click('text=Dashboard')
+  await page.click('text=Monthly earnings')
+  await page.waitForSelector('text=Monthly earnings')
+  await page.waitForTimeout(1000)
+  const totalRow = await page.locator('tfoot').innerText()
+  const totalsOk =
+    totalRow.includes('111,171.00') &&
+    totalRow.includes('77,200.00') &&
+    totalRow.includes('33,971.00')
+  log(
+    'earnings totals (rev/cost/profit)',
+    totalsOk,
+    totalRow.replace(/\n/g, ' | '),
+  )
+  await page.locator('tbody tr').first().click()
+  await page.waitForTimeout(500)
+  log('month drill-down shows invoices', (await page.locator('tbody .font-mono').count()) === 3)
+
   /* -------- Settings: change password -------- */
   await page.click('text=Settings')
   await page.waitForSelector('text=Change password')
@@ -180,8 +201,23 @@ try {
   await page.click('button:has-text("Unlock")')
   await page.waitForSelector('text=Welcome back', { timeout: 15000 })
   log('unlock screen after reload', true)
+
+  /* -------- Cleanup: delete the two remaining test invoices -------- */
+  for (let i = 0; i < 2; i++) {
+    await page.click('text=Search invoices')
+    await page.waitForSelector('button:has-text("Delete")', { timeout: 10000 })
+    page.once('dialog', (d) => d.accept())
+    await page.locator('button:has-text("Delete")').first().click()
+    await page.waitForTimeout(800)
+  }
+  await page.click('text=Search invoices')
+  await page.waitForTimeout(800)
+  log('cleanup deletes test invoices', (await page.locator('.font-mono.text-sm').count()) === 0)
 } catch (err) {
   log('SCRIPT ERROR', false, err.message)
+  try {
+    console.log('BODY DUMP:', (await page.locator('body').innerText()).slice(0, 500).replace(/\n/g, ' | '))
+  } catch { /* page gone */ }
   await page.screenshot({ path: '/tmp/opencode/fail.png', fullPage: true })
 }
 

@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import NewInvoice from './pages/NewInvoice'
 import Search from './pages/Search'
+import Earnings from './pages/Earnings'
 import Settings from './pages/Settings'
 import { Btn, Field, inputCls, ErrorBox } from './components/ui'
 
@@ -103,6 +104,7 @@ function AppShell() {
           <Route path="/" element={<Dashboard user={user} />} />
           <Route path="/new/:type" element={<NewInvoice />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/earnings" element={<Earnings />} />
           <Route path="/settings" element={<Settings user={user} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

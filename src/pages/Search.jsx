@@ -145,6 +145,12 @@ export default function Search() {
             </div>
             <div className="text-right">
               <p className="font-bold text-navy-900">{bdt(r.total)}</p>
+              <p className="mt-0.5 text-xs text-navy-500">
+                cost {bdt(r.costTotal || 0)} · profit{' '}
+                <span className={((Number(r.total) || 0) - (Number(r.costTotal) || 0)) >= 0 ? 'text-emerald-700' : 'text-red-600'}>
+                  {bdt((Number(r.total) || 0) - (Number(r.costTotal) || 0))}
+                </span>
+              </p>
               <div className="mt-2 flex gap-1.5">
                 <Btn variant="outline" className="!px-3 !py-1.5 text-xs" disabled={busyId === r.id} onClick={() => view(r.id)}>
                   View

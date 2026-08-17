@@ -8,6 +8,7 @@ const links = [
   { to: '/new/product', label: 'Product Sale' },
   { to: '/new/repair', label: 'Repair' },
   { to: '/search', label: 'Search' },
+  { to: '/earnings', label: 'Earnings' },
   { to: '/settings', label: 'Settings' },
 ]
 
