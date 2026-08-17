@@ -23,7 +23,12 @@ Every invoice is handled on your device before anything is uploaded:
 3. It is encrypted with AES-256-GCM, using a key derived from your password (PBKDF2 with 310,000 rounds).
 4. Only the encrypted blob goes to the cloud.
 
-In short, nobody but you can read the invoices, not even the cloud provider. At sign-up you will see a one-time **recovery phrase** — if you ever forget your password, that phrase is the only way back into your invoices, so keep it somewhere safe (offline is best). Changing your password re-wraps the encryption key automatically, so nothing is lost.
+In short, nobody but you can read the invoices, not even the cloud provider. The
+encrypted files live inside the free Firestore database (1 GB free, well over
+10,000 invoices). At sign-up you will see a one-time **recovery phrase** — if you
+ever forget your password, that phrase is the only way back into your invoices, so
+keep it somewhere safe (offline is best). Changing your password re-wraps the
+encryption key automatically, so nothing is lost.
 
 ## Running it locally
 
@@ -36,20 +41,22 @@ The app opens in your browser. Without Firebase configured it runs in **demo mod
 
 ## Connecting the cloud storage (Firebase, free plan, ~10 minutes)
 
+Your invoices are stored inside the Firestore database (not Firebase Storage, which
+Google now charges for on new projects). The free allowance is 1 GB, which holds
+roughly 10,000+ invoices — plenty for a growing business.
+
 1. Go to https://console.firebase.google.com and click **Add project**.
 2. **Build → Authentication → Get started → Email/Password** and enable it.
 3. **Build → Firestore Database → Create database** (production mode, choose a region near you).
-4. **Build → Storage → Get started** (production mode).
-5. In **Project settings → Your apps → Web app (</>)**, register the app and copy the config values.
-6. Copy `.env.example` to `.env` and paste the six `VITE_FIREBASE_*` values:
+4. In **Project settings → Your apps → Web app (</>)**, register the app and copy the config values.
+5. Copy `.env.example` to `.env` and paste the six `VITE_FIREBASE_*` values:
 
 ```bash
 cp .env.example .env
 ```
 
-7. Lock down the data with the rules files in this repo:
+6. Lock down the data with the rules file in this repo:
    - **Firestore → Rules** → paste `firestore.rules` → Publish
-   - **Storage → Rules** → paste `storage.rules` → Publish
 
 Restart `npm run dev`. The badge on the login page should now say "Connected to firebase" instead of demo mode.
 

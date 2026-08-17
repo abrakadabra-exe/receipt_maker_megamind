@@ -212,9 +212,8 @@ const fb = {
   },
   async saveInvoice(record) {
     const uid = await fbCurrentUid()
-    const { db, storage } = await getFirebase()
+    const { db } = await getFirebase()
     const { doc, setDoc } = await import('firebase/firestore')
-    const { ref, uploadBytes } = await import('firebase/storage')
     const id = record.id || crypto.randomUUID()
     const meta = { ...record, blob: undefined, id }
     await setDoc(doc(db, 'users', uid, 'invoices', id), {
@@ -227,8 +226,8 @@ const fb = {
       dueDate: meta.dueDate,
       total: meta.total,
       createdAt: meta.createdAt,
+      blob: record.blob,
     })
-    await uploadBytes(ref(storage, `invoices/${uid}/${id}.bin`), record.blob)
     return meta
   },
   async queryInvoices(filters = {}) {
@@ -241,7 +240,10 @@ const fb = {
       limit(1000),
     )
     const snap = await getDocs(q)
-    let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    let list = snap.docs.map((d) => {
+      const { blob: _blob, ...rest } = d.data()
+      return { id: d.id, ...rest }
+    })
     if (filters.type) list = list.filter((i) => i.type === filters.type)
     if (filters.number) {
       const needle = filters.number.trim().toLowerCase()
@@ -253,21 +255,18 @@ const fb = {
   },
   async getInvoice(id) {
     const uid = await fbCurrentUid()
-    const { db, storage } = await getFirebase()
+    const { db } = await getFirebase()
     const { doc, getDoc } = await import('firebase/firestore')
-    const { ref, getBlob } = await import('firebase/storage')
     const snap = await getDoc(doc(db, 'users', uid, 'invoices', id))
     if (!snap.exists()) return null
-    const blob = await getBlob(ref(storage, `invoices/${uid}/${id}.bin`))
-    return { meta: { id, ...snap.data() }, blob: new Uint8Array(await blob.arrayBuffer()) }
+    const data = snap.data()
+    return { meta: { id, ...data, blob: undefined }, blob: new Uint8Array(data.blob) }
   },
   async deleteInvoice(id) {
     const uid = await fbCurrentUid()
-    const { db, storage } = await getFirebase()
+    const { db } = await getFirebase()
     const { doc, deleteDoc } = await import('firebase/firestore')
-    const { ref, deleteObject } = await import('firebase/storage')
     await deleteDoc(doc(db, 'users', uid, 'invoices', id))
-    await deleteObject(ref(storage, `invoices/${uid}/${id}.bin`)).catch(() => {})
   },
   async changePassword(oldPassword, newPassword) {
     const { auth } = await getFirebase()
