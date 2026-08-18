@@ -104,7 +104,7 @@ export default function Earnings() {
           <div className="w-full sm:w-56">
             <span className="mb-1 block text-xs font-semibold tracking-wide text-navy-700 uppercase">Invoice type</span>
             <select
-              className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 shadow-sm outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-200"
+              className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
               value={type}
               onChange={(e) => { setType(e.target.value); setOpenMonth(null) }}
             >
@@ -120,7 +120,7 @@ export default function Earnings() {
       <ErrorBox>{error}</ErrorBox>
 
       {anyMissingCost && (
-        <div className="mt-4 rounded-lg border border-gold-300 bg-gold-50 px-4 py-3 text-sm text-gold-900">
+        <div className="mt-4 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Some invoices were made before cost prices existed — they count with zero cost.
           Recreate those invoices with cost prices and the profit numbers will be exact.
         </div>
@@ -135,7 +135,7 @@ export default function Earnings() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-navy-100 bg-navy-50 text-left text-xs font-bold uppercase tracking-wide text-navy-700">
+                <tr className="border-b border-purple-100 bg-purple-50 text-left text-xs font-bold uppercase tracking-wide text-purple-800">
                   <th className="px-4 py-3">Month</th>
                   <th className="px-4 py-3 text-right">Invoices</th>
                   <th className="px-4 py-3 text-right">Revenue</th>
@@ -152,7 +152,7 @@ export default function Earnings() {
                     >
                       <td className="px-4 py-3 font-semibold text-navy-900">
                         {monthLabel(m.key)}
-                        {m.missingCost ? <span className="ml-2 text-[11px] font-normal text-gold-700">cost missing</span> : null}
+                        {m.missingCost ? <span className="ml-2 text-[11px] font-normal text-orange-700">cost missing</span> : null}
                       </td>
                       <td className="px-4 py-3 text-right text-navy-600">{m.invoices.length}</td>
                       <td className="px-4 py-3 text-right font-semibold text-navy-800">{bdt(m.revenue)}</td>
@@ -170,7 +170,7 @@ export default function Earnings() {
                               return (
                                 <div key={inv.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-navy-100 bg-white p-3">
                                   <span className="font-mono text-xs font-bold text-navy-900">{inv.number}</span>
-                                  <Badge color={inv.type === 'service' ? 'navy' : inv.type === 'product' ? 'gold' : 'green'}>
+                                  <Badge color={inv.type === 'service' ? 'navy' : inv.type === 'product' ? 'orange' : 'green'}>
                                     {TYPES.find((t) => t.id === inv.type)?.label || inv.type}
                                   </Badge>
                                   <span className="min-w-0 flex-1 truncate text-sm text-navy-600">
@@ -197,7 +197,7 @@ export default function Earnings() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-navy-800 text-white">
+                <tr className="bg-orange-500 text-white">
                   <td className="px-4 py-3 font-bold">Total ({totals.count} invoices)</td>
                   <td className="px-4 py-3 text-right font-bold">{totals.count}</td>
                   <td className="px-4 py-3 text-right font-bold">{bdt(totals.revenue)}</td>

@@ -37,11 +37,11 @@ export const COMPANY = {
 
 const NAVY = '#1b2a4a'
 const NAVY_LIGHT = '#f2f5fa'
-const GOLD = '#c9a227'
-const GOLD_DARK = '#a37f1f'
+const ORANGE = '#fa6401'
+const ORANGE_DARK = '#c2410c'
 const PURPLE = '#4C1489'
 const GRAY = '#6b7280'
-const LINE = '#d7dee9'
+const LINE = '#e5e0f0'
 
 const styles = StyleSheet.create({
   page: {
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   invoiceTitle: { fontSize: 21, fontWeight: 700, color: NAVY, textAlign: 'right', letterSpacing: 1 },
   typeBadge: {
     alignSelf: 'flex-end',
-    backgroundColor: GOLD,
+    backgroundColor: ORANGE,
     color: '#fff',
     fontSize: 7,
     fontWeight: 700,
@@ -82,10 +82,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2 },
   metaLabel: { fontSize: 7.5, color: GRAY, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 10, textAlign: 'right', width: 62 },
   metaValue: { fontSize: 8.5, color: NAVY, fontWeight: 600, width: 110, textAlign: 'right' },
-  goldRule: { height: 2.2, backgroundColor: GOLD, marginTop: 14 },
+  goldRule: { height: 2.2, backgroundColor: ORANGE, marginTop: 14 },
   navyRule: { height: 0.6, backgroundColor: NAVY, opacity: 0.25, marginTop: 1.5 },
   billedTo: { marginTop: 16 },
-  sectionLabel: { fontSize: 7.5, color: GOLD_DARK, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 },
+  sectionLabel: { fontSize: 7.5, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 },
   clientName: { fontSize: 10.5, fontWeight: 700, color: NAVY },
   clientSub: { fontSize: 8.5, color: GRAY, marginTop: 1.5 },
   table: { marginTop: 14, borderWidth: 0.75, borderColor: LINE, borderRadius: 3, overflow: 'hidden' },
@@ -96,16 +96,16 @@ const styles = StyleSheet.create({
   cell: { fontSize: 8.3 },
   cellBold: { fontSize: 8.3, fontWeight: 600 },
   cellRight: { textAlign: 'right' },
-  warranty: { fontSize: 7, color: GOLD_DARK, fontWeight: 600, marginTop: 1.5 },
+  warranty: { fontSize: 7, color: ORANGE_DARK, fontWeight: 600, marginTop: 1.5 },
   workDone: {
     marginTop: 10,
     borderLeftWidth: 2.5,
-    borderLeftColor: GOLD,
+    borderLeftColor: ORANGE,
     backgroundColor: NAVY_LIGHT,
     padding: 8,
     borderRadius: 2,
   },
-  workLabel: { fontSize: 7.5, color: GOLD_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
+  workLabel: { fontSize: 7.5, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
   workText: { fontSize: 8.3, color: '#333a48', lineHeight: 1.45 },
   totalsWrap: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end' },
   totalsBox: { width: 248 },
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   words: { marginTop: 6, fontSize: 7.8, fontStyle: 'italic', color: '#4b5563' },
   bottomBlock: { marginTop: 16, flexDirection: 'row', gap: 14 },
   infoCol: { flex: 1, borderWidth: 0.75, borderColor: LINE, borderRadius: 3, padding: 8 },
-  infoLabel: { fontSize: 7, color: GOLD_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
+  infoLabel: { fontSize: 7, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
   infoText: { fontSize: 8.3, color: '#333a48', lineHeight: 1.4 },
   footer: {
     position: 'absolute',
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     left: 36,
     right: 36,
     borderTopWidth: 1.6,
-    borderTopColor: GOLD,
+    borderTopColor: ORANGE,
     paddingTop: 8,
     alignItems: 'center',
   },

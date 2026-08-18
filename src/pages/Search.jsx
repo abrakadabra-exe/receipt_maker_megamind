@@ -133,7 +133,7 @@ export default function Search() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-sm font-bold text-navy-900">{r.number}</span>
-                <Badge color={r.type === 'service' ? 'navy' : r.type === 'product' ? 'gold' : 'green'}>
+                <Badge color={r.type === 'service' ? 'navy' : r.type === 'product' ? 'orange' : 'green'}>
                   {TYPES.find((t) => t.id === r.type)?.label || r.type}
                 </Badge>
               </div>

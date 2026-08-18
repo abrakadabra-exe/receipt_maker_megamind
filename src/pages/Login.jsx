@@ -8,20 +8,19 @@ function RecoveryScreen({ phrase, onDone }) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="mx-auto mt-10 w-full max-w-md px-4">
-      <div className="rounded-xl border-2 border-gold-400 bg-gold-50 p-6 shadow-sm">
+      <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-6 shadow-sm">
         <h2 className="text-lg font-bold text-navy-900">Save your recovery phrase</h2>
         <p className="mt-2 text-sm text-navy-700">
           This is the <b>only</b> way to recover your invoices if you forget your password.
           Write it down and keep it somewhere safe. It is shown only once.
         </p>
-        <div className="mt-4 rounded-lg border border-gold-300 bg-white p-4 text-center font-mono text-sm break-all text-navy-900">
+        <div className="mt-4 rounded-lg border border-orange-200 bg-white p-4 text-center font-mono text-sm break-all text-navy-900">
           {phrase}
         </div>
         <div className="mt-4 flex gap-2">
           <Btn
             variant="gold"
-            className="flex-1"
-            onClick={() => {
+            className="flex-1"            onClick={() => {
               navigator.clipboard?.writeText(phrase)
               setCopied(true)
             }}
@@ -102,7 +101,7 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
           Professional invoices, securely stored
         </p>
         {isDemoMode() ? (
-          <p className="mt-2 inline-block rounded-full bg-gold-100 px-3 py-1 text-[11px] font-semibold text-gold-800">
+          <p className="mt-2 inline-block rounded-full bg-orange-100 px-3 py-1 text-[11px] font-semibold text-orange-800">
             Demo mode (browser storage) — Firebase not configured
           </p>
         ) : (
@@ -113,14 +112,14 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
       </div>
 
       <div className="rounded-xl border border-navy-100 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex rounded-lg bg-navy-50 p-1">
+        <div className="mb-4 flex rounded-lg bg-purple-50 p-1">
           {['login', 'signup'].map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => { setMode(m); setError('') }}
               className={`flex-1 rounded-md py-2 text-sm font-semibold transition ${
-                mode === m ? 'bg-navy-800 text-white shadow' : 'text-navy-600'
+                mode === m ? 'bg-purple-700 text-white shadow' : 'text-navy-600'
               }`}
             >
               {m === 'login' ? 'Sign in' : 'Create account'}

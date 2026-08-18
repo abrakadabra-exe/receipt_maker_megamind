@@ -213,18 +213,18 @@ export default function NewInvoice() {
   if (saved) {
     return (
       <div className="mx-auto max-w-lg">
-        <Card className="border-gold-300 text-center">
+        <Card className="border-orange-300 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-7 w-7 text-emerald-600">
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <h1 className="mt-4 text-xl font-bold text-navy-900">Invoice saved</h1>
+          <h1 className="mt-4 text-xl font-bold text-purple-800">Invoice saved</h1>
           <p className="mt-1 text-sm text-navy-500">
             Your invoice has been compressed, encrypted and stored in the cloud.
           </p>
-          <div className="mt-4 rounded-lg bg-navy-800 p-4 text-white">
-            <p className="text-xs tracking-widest text-gold-400 uppercase">Invoice number</p>
+          <div className="mt-4 rounded-lg bg-purple-700 p-4 text-white">
+            <p className="text-xs tracking-widest text-orange-400 uppercase">Invoice number</p>
             <p className="mt-1 font-mono text-2xl font-bold">{saved.number}</p>
           </div>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -248,7 +248,7 @@ export default function NewInvoice() {
 
       <form onSubmit={save} className="space-y-5">
         <Card>
-          <h3 className="mb-3 text-xs font-bold tracking-wide text-navy-700 uppercase">Billed To</h3>
+          <h3 className="mb-3 text-xs font-bold tracking-wide text-purple-800 uppercase">Billed To</h3>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Client / company name" className="sm:col-span-3">
               <input className={inputCls} value={client.name} onChange={(e) => setClient({ ...client, name: e.target.value })} placeholder="e.g. Doctor's Healthcare LTD" />
@@ -273,7 +273,7 @@ export default function NewInvoice() {
 
         {type === 'repair' && (
           <Card>
-            <h3 className="mb-3 text-xs font-bold tracking-wide text-navy-700 uppercase">Repair details</h3>
+            <h3 className="mb-3 text-xs font-bold tracking-wide text-purple-800 uppercase">Repair details</h3>
             <div className="grid gap-3">
               <Field label="Device / unit">
                 <input className={inputCls} value={repair.device} onChange={(e) => setRepair({ ...repair, device: e.target.value })} placeholder="e.g. HP ProBook 450 G8, Laptop" />
@@ -290,7 +290,7 @@ export default function NewInvoice() {
 
         <Card>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Line items</h3>
+            <h3 className="text-xs font-bold tracking-wide text-purple-800 uppercase">Line items</h3>
             <Btn type="button" variant="outline" onClick={() => setItems((p) => [...p, newItem(type)])}>
               + Add item
             </Btn>
@@ -298,20 +298,20 @@ export default function NewInvoice() {
 
           <div className="space-y-2">
             {items.map((it, i) => (
-              <div key={i} className="rounded-lg border border-navy-100 bg-navy-50/50 p-3">
+              <div key={i} className="rounded-lg border border-purple-100 bg-purple-50/40 p-3">
                 <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-7">
                   {cols.map((c) => {
                     if (c.readOnly) {
                       return (
                         <Field key={c.key} label={c.label} className="hidden sm:block">
-                          <div className="rounded-lg bg-navy-100 px-3 py-2.5 text-right text-sm font-semibold text-navy-800">
+                          <div className="rounded-lg bg-purple-100 px-3 py-2.5 text-right text-sm font-semibold text-purple-800">
                             {bdt(itemTotal(it))}
                           </div>
                         </Field>
                       )
                     }
                     return (
-                      <Field key={c.key} label={c.label} className={c.flex ? 'col-span-2 sm:col-span-1' : ''}>
+                      <Field key={c.key} label={c.label} className={c.flex ? 'col-span-2 sm:col-span-1' : 'min-w-0'}>
                         {c.key === 'kind' ? (
                           <select
                             className={inputCls}
@@ -376,7 +376,7 @@ export default function NewInvoice() {
               <input className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, special instructions…" />
             </Field>
           </div>
-          <div className="mt-4 space-y-1.5 rounded-lg bg-navy-50 p-4 text-sm">
+          <div className="mt-4 space-y-1.5 rounded-lg bg-purple-50/60 p-4 text-sm">
             <div className="flex justify-between text-navy-600">
               <span>Subtotal</span><span className="font-semibold">{bdt(totals.subtotal)}</span>
             </div>
@@ -388,7 +388,7 @@ export default function NewInvoice() {
             <div className="flex justify-between text-navy-600">
               <span>Tax</span><span className="font-semibold">{bdt(totals.taxTotal)}</span>
             </div>
-            <div className="flex justify-between rounded-md bg-navy-800 px-3 py-2 text-white">
+            <div className="flex justify-between rounded-md bg-orange-500 px-3 py-2 text-white">
               <span className="font-bold">Grand total</span>
               <span className="font-bold">{bdt(totals.total)}</span>
             </div>
@@ -415,16 +415,16 @@ export default function NewInvoice() {
           <Btn type="button" variant="outline" onClick={preview} disabled={busy}>
             Preview PDF
           </Btn>
-          <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-navy-700 transition hover:bg-navy-100">
+          <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-purple-800 transition hover:bg-purple-50">
             Cancel
           </Link>
         </div>
       </form>
 
       {previewState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/70 p-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-purple-950/70 p-1.5 sm:p-3">
           <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-navy-100 px-4 py-3">
+            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-navy-100 px-3 py-3 sm:px-4">
               <span className="min-w-0 truncate text-sm font-bold text-navy-900">PDF preview — {previewState.number}</span>
               <div className="flex gap-2">
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => downloadBlobFromUrl(previewState.url, 'invoice-preview.pdf')}>

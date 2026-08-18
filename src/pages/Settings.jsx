@@ -36,12 +36,12 @@ export default function Settings({ user }) {
         <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Account</h3>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="text-sm font-semibold break-all text-navy-900">{user?.email}</span>
-          <Badge color={isDemoMode() ? 'gold' : 'green'}>
+          <Badge color={isDemoMode() ? 'orange' : 'green'}>
             {isDemoMode() ? 'Demo mode (browser storage)' : `Connected to ${backendName()}`}
           </Badge>
         </div>
         {isDemoMode() && (
-          <p className="mt-3 rounded-lg bg-gold-50 p-3 text-xs leading-relaxed text-gold-900">
+          <p className="mt-3 rounded-lg bg-orange-50 p-3 text-xs leading-relaxed text-orange-900">
             You are in demo mode: invoices are encrypted and saved in this browser only.
             To use cloud storage, create a free Firebase project and add its config to a{' '}
             <code className="font-mono">.env</code> file (see README). Until then you can

@@ -34,7 +34,7 @@ function Unlock({ onUnlocked }) {
   return (
     <div className="mx-auto mt-16 w-full max-w-md px-4">
       <div className="rounded-xl border border-navy-100 bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-bold text-navy-900">Unlock your invoices</h1>
+        <h1 className="text-lg font-bold text-purple-800">Unlock your invoices</h1>
         <p className="mt-1 text-sm text-navy-500">
           You are signed in, but your encryption key was cleared. Enter your password to
           decrypt your invoices on this device.

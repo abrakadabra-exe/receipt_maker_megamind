@@ -31,10 +31,10 @@ const ICONS = {
 export default function Dashboard({ user }) {
   return (
     <div>
-      <div className="rounded-xl bg-navy-800 p-6 text-white shadow-md">
-        <p className="text-xs font-semibold tracking-widest text-gold-400 uppercase">Welcome back</p>
+      <div className="rounded-xl bg-purple-700 p-6 text-white shadow-md">
+        <p className="text-xs font-semibold tracking-widest text-orange-300 uppercase">Welcome back</p>
         <h1 className="mt-1 text-2xl font-bold break-all">{user?.email}</h1>
-        <p className="mt-2 text-sm text-navy-100">
+        <p className="mt-2 text-sm text-purple-100">
           Create a new invoice or find an existing one. Every PDF is compressed,
           encrypted on this device and stored securely in the cloud.
         </p>
@@ -46,9 +46,9 @@ export default function Dashboard({ user }) {
           <Link
             key={t.id}
             to={`/new/${t.id}`}
-            className="group rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
+            className="group rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-400 hover:shadow-md"
           >
-            <div className="text-gold-600">{ICONS[t.id]}</div>
+            <div className="text-orange-500">{ICONS[t.id]}</div>
             <h3 className="mt-3 font-bold text-navy-900 group-hover:text-navy-700">{t.label}</h3>
             <p className="mt-1 text-xs text-navy-500">{t.blurb}</p>
           </Link>
@@ -59,17 +59,17 @@ export default function Dashboard({ user }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
           to="/search"
-          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
+          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-400 hover:shadow-md"
         >
-          <div className="text-gold-600">{ICONS.search}</div>
+          <div className="text-orange-500">{ICONS.search}</div>
           <h3 className="mt-3 font-bold text-navy-900">Search invoices</h3>
           <p className="mt-1 text-xs text-navy-500">By invoice number, date range or type</p>
         </Link>
         <Link
           to="/earnings"
-          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-md"
+          className="block rounded-xl border border-navy-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-400 hover:shadow-md"
         >
-          <div className="text-gold-600">
+          <div className="text-orange-500">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-8 w-8">
               <path d="M3 3v18h18" />
               <path d="M7 15l4-4 3 3 5-6" />
