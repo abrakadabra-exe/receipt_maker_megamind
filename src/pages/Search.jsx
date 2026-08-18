@@ -8,6 +8,7 @@ import { Btn, Field, inputCls, Card, Badge, SectionTitle, ErrorBox } from '../co
 export default function Search() {
   const [number, setNumber] = useState('')
   const [type, setType] = useState('')
+  const [client, setClient] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [rows, setRows] = useState([])
@@ -21,6 +22,7 @@ export default function Search() {
       const list = await backend.queryInvoices({
         number: filters.number ?? number,
         type: filters.type ?? type,
+        client: filters.client ?? client,
         from: filters.from ?? from,
         to: filters.to ?? to,
       })
@@ -33,7 +35,7 @@ export default function Search() {
   }
 
   useEffect(() => {
-    run({ number: '', type: '', from: '', to: '' })
+    run({ number: '', type: '', client: '', from: '', to: '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -86,6 +88,17 @@ export default function Search() {
     }
   }
 
+  async function cancel(id) {
+    if (!window.confirm('Cancel this invoice? A CANCELLED stamp will be shown and it will be excluded from earnings.')) return
+    setError('')
+    try {
+      await backend.cancelInvoice(id)
+      setRows((p) => p.map((r) => (r.id === id ? { ...r, status: 'cancelled' } : r)))
+    } catch (err) {
+      setError(err.message || 'Could not cancel invoice')
+    }
+  }
+
   return (
     <div>
       <SectionTitle sub="Find any invoice by number, date range or type. PDFs are decrypted on your device.">
@@ -93,7 +106,7 @@ export default function Search() {
       </SectionTitle>
 
       <Card>
-        <div className="grid gap-3 sm:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-6">
           <Field label="Invoice number">
             <input
               className={inputCls}
@@ -109,6 +122,14 @@ export default function Search() {
                 <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>
+          </Field>
+          <Field label="Client">
+            <input
+              className={inputCls}
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              placeholder="Client name"
+            />
           </Field>
           <Field label="From date">
             <input type="date" className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -129,10 +150,13 @@ export default function Search() {
           <Card className="text-center text-sm text-navy-500">No invoices found.</Card>
         )}
         {rows.map((r) => (
-          <Card key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 !p-4">
+          <Card key={r.id} className={`flex flex-wrap items-center gap-x-4 gap-y-2 !p-4 ${r.status === 'cancelled' ? 'opacity-70' : ''}`}>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-sm font-bold text-navy-900">{r.number}</span>
+                {r.status === 'cancelled' && (
+                  <Badge color="red">Cancelled</Badge>
+                )}
                 <Badge color={r.type === 'service' ? 'navy' : r.type === 'product' ? 'orange' : 'green'}>
                   {TYPES.find((t) => t.id === r.type)?.label || r.type}
                 </Badge>
@@ -151,13 +175,18 @@ export default function Search() {
                   {bdt((Number(r.total) || 0) - (Number(r.costTotal) || 0))}
                 </span>
               </p>
-              <div className="mt-2 flex gap-1.5">
+              <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => view(r.id)}>
                   View
                 </Btn>
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => download(r.id)}>
                   PDF
                 </Btn>
+                {r.status !== 'cancelled' && (
+                  <Btn variant="outline" className="!px-3 !py-2 text-sm text-red-600" disabled={busyId === r.id} onClick={() => cancel(r.id)}>
+                    Cancel
+                  </Btn>
+                )}
                 <Btn variant="danger" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => remove(r.id)}>
                   Delete
                 </Btn>

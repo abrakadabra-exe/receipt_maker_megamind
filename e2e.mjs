@@ -63,7 +63,7 @@ try {
   await page.fill('input[placeholder*="Payment terms"]', 'Due on receipt')
   await fillItem(0, { desc: 'FB BOOST 7 DAYS', qty: '1', price: '3020', cost: '2000', tax: '5' })
 
-  const grand = await page.locator('div.bg-navy-800').innerText()
+  const grand = await page.locator('div.bg-orange-500').innerText()
   log('totals computed', grand.includes('3,171.00'), grand.replace(/\n/g, ' | '))
 
   await page.click('button:has-text("Preview PDF")')
@@ -97,7 +97,7 @@ try {
   await page.waitForSelector('text=Product Sale Invoice')
   await page.fill('input[placeholder*="Doctor"]', 'Retail Client')
   await fillItem(0, { desc: 'Laptop 14" 8GB', qty: '2', price: '50000', cost: '35000', tax: '0', warranty: '1 year' })
-  const pTotal = await page.locator('div.bg-navy-800').innerText()
+  const pTotal = await page.locator('div.bg-orange-500').innerText()
   log('product totals (2×50000)', pTotal.includes('100,000.00'), pTotal.replace(/\n/g, ' | '))
   await page.click('button:has-text("Save invoice")')
   await page.waitForSelector('text=Invoice saved', { timeout: 40000 })
@@ -118,7 +118,7 @@ try {
   await fillItem(0, { kind: 'labour', desc: 'Labour charge', qty: '1', price: '1500', cost: '1200', tax: '0' })
   await page.click('button:has-text("Add item")')
   await fillItem(1, { kind: 'parts', desc: 'Display panel', qty: '1', price: '6500', cost: '4000', tax: '0' })
-  const rTotal = await page.locator('div.bg-navy-800').innerText()
+  const rTotal = await page.locator('div.bg-orange-500').innerText()
   log('repair totals (labour+parts)', rTotal.includes('8,000.00'), rTotal.replace(/\n/g, ' | '))
   await page.click('button:has-text("Save invoice")')
   await page.waitForSelector('text=Invoice saved', { timeout: 40000 })

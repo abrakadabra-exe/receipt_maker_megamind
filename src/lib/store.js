@@ -29,6 +29,14 @@ function demoInvoicesKey(email) {
   return `${DEMO_PREFIX}${email}_invoices`
 }
 
+function demoContactsKey(email) {
+  return `${DEMO_PREFIX}${email}_contacts`
+}
+
+function demoContacts(email) {
+  return JSON.parse(localStorage.getItem(demoContactsKey(email)) || '[]')
+}
+
 function demoInvoices(email) {
   return JSON.parse(localStorage.getItem(demoInvoicesKey(email)) || '[]')
 }
@@ -88,6 +96,7 @@ const demo = {
     const list = demoInvoices(email)
     const meta = { ...record, blob: undefined }
     meta.id = record.id || demoRandomId()
+    meta.status = record.status || 'active'
     list.push({ ...meta, blobB64: bytesToBase64(record.blob) })
     localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
     return meta
@@ -103,6 +112,10 @@ const demo = {
     }
     if (filters.from) list = list.filter((i) => i.date >= filters.from)
     if (filters.to) list = list.filter((i) => i.date <= filters.to)
+    if (filters.client) {
+      const q = filters.client.trim().toLowerCase()
+      list = list.filter((i) => (i.client?.name || i.clientName || '').toLowerCase().includes(q))
+    }
     return list
       .map(({ blobB64: _blobB64, ...meta }) => meta)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
@@ -120,6 +133,58 @@ const demo = {
     if (!email) return
     const list = demoInvoices(email).filter((i) => i.id !== id)
     localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
+  },
+  async cancelInvoice(id) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const list = demoInvoices(email).map((i) =>
+      i.id === id ? { ...i, status: 'cancelled' } : i,
+    )
+    localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
+  },
+  async saveContact(contact) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const list = demoContacts(email)
+    const existing = list.find((c) => c.name.trim().toLowerCase() === (contact.name || '').trim().toLowerCase())
+    if (existing) {
+      Object.assign(existing, { phone: contact.phone || '', address: contact.address || '' })
+    } else {
+      list.push({
+        id: demoRandomId(),
+        name: (contact.name || '').trim(),
+        phone: contact.phone || '',
+        address: contact.address || '',
+        createdAt: Date.now(),
+      })
+    }
+    localStorage.setItem(demoContactsKey(email), JSON.stringify(list))
+    return existing || list[list.length - 1]
+  },
+  async queryContacts(search = '') {
+    const email = this.getCurrentUser()?.email
+    if (!email) return []
+    let list = demoContacts(email)
+    const q = search.trim().toLowerCase()
+    if (q) list = list.filter((c) => (c.name || '').toLowerCase().includes(q))
+    return list.sort((a, b) => (a.name < b.name ? -1 : 1))
+  },
+  async deleteContact(id) {
+    const email = this.getCurrentUser()?.email
+    if (!email) return
+    const list = demoContacts(email).filter((c) => c.id !== id)
+    localStorage.setItem(demoContactsKey(email), JSON.stringify(list))
+  },
+  async exportAllInvoices() {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    return demoInvoices(email).map((rec) => {
+      const { blobB64, ...meta } = rec
+      return { meta, blob: base64ToBytes(blobB64) }
+    })
+  },
+  async deleteAllCloudData() {
+    return 0
   },
   async changePassword(oldPassword, newPassword) {
     const email = this.getCurrentUser()?.email
@@ -197,9 +262,16 @@ const fb = {
   async onAuthChange(cb) {
     const { auth } = await getFirebase()
     const { onAuthStateChanged } = await import('firebase/auth')
-    return onAuthStateChanged(auth, (u) =>
+    let unsub = null
+    const setup = onAuthStateChanged(auth, (u) =>
       cb(u ? { uid: u.uid, email: u.email } : null),
     )
+    if (typeof setup === 'function') unsub = setup
+    else {
+      const p = Promise.resolve(setup)
+      unsub = () => p.then((fn) => typeof fn === 'function' && fn())
+    }
+    return () => { try { unsub() } catch { /* noop */ } }
   },
   async getProfile(uid) {
     const { db } = await getFirebase()
@@ -228,6 +300,7 @@ const fb = {
       dueDate: meta.dueDate,
       total: meta.total,
       costTotal: meta.costTotal || 0,
+      status: meta.status || 'active',
       createdAt: meta.createdAt,
       blob: record.blob ? Bytes.fromUint8Array(record.blob) : null,
     })
@@ -254,6 +327,10 @@ const fb = {
     }
     if (filters.from) list = list.filter((i) => i.date >= filters.from)
     if (filters.to) list = list.filter((i) => i.date <= filters.to)
+    if (filters.client) {
+      const q = filters.client.trim().toLowerCase()
+      list = list.filter((i) => (i.client?.name || i.clientName || '').toLowerCase().includes(q))
+    }
     return list
   },
   async getInvoice(id) {
@@ -270,6 +347,93 @@ const fb = {
     const { db } = await getFirebase()
     const { doc, deleteDoc } = await import('firebase/firestore')
     await deleteDoc(doc(db, 'users', uid, 'invoices', id))
+  },
+  async cancelInvoice(id) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, updateDoc } = await import('firebase/firestore')
+    await updateDoc(doc(db, 'users', uid, 'invoices', id), { status: 'cancelled' })
+  },
+  async saveContact(contact) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { collection, query, where, getDocs, addDoc, updateDoc } = await import('firebase/firestore')
+    const name = (contact.name || '').trim()
+    const col = collection(db, 'users', uid, 'contacts')
+    const q = query(col, where('nameLower', '==', name.toLowerCase()))
+    const snap = await getDocs(q)
+    const data = {
+      name,
+      nameLower: name.toLowerCase(),
+      phone: contact.phone || '',
+      address: contact.address || '',
+      createdAt: Date.now(),
+    }
+    if (!snap.empty) {
+      const ref = snap.docs[0].ref
+      await updateDoc(ref, { name, nameLower: name.toLowerCase(), phone: data.phone, address: data.address })
+      return { id: snap.docs[0].id, ...data }
+    }
+    const ref = await addDoc(col, data)
+    return { id: ref.id, ...data }
+  },
+  async queryContacts(search = '') {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { collection, getDocs } = await import('firebase/firestore')
+    const snap = await getDocs(collection(db, 'users', uid, 'contacts'))
+    let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const q = search.trim().toLowerCase()
+    if (q) list = list.filter((c) => (c.name || '').toLowerCase().includes(q))
+    return list.sort((a, b) => (a.name < b.name ? -1 : 1))
+  },
+  async deleteContact(id) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, deleteDoc } = await import('firebase/firestore')
+    await deleteDoc(doc(db, 'users', uid, 'contacts', id))
+  },
+  async exportAllInvoices() {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { collection, query, orderBy, limit, startAfter, getDocs } = await import('firebase/firestore')
+    const out = []
+    let cursor = null
+    for (;;) {
+      const q = cursor
+        ? query(collection(db, 'users', uid, 'invoices'), orderBy('createdAt', 'desc'), startAfter(cursor), limit(1000))
+        : query(collection(db, 'users', uid, 'invoices'), orderBy('createdAt', 'desc'), limit(1000))
+      const snap = await getDocs(q)
+      if (snap.empty) break
+      for (const d of snap.docs) {
+        const data = d.data()
+        out.push({
+          meta: { id: d.id, ...data, blob: undefined },
+          blob: data.blob ? data.blob.toUint8Array() : null,
+        })
+      }
+      if (snap.docs.length < 1000) break
+      cursor = snap.docs[snap.docs.length - 1]
+    }
+    return out
+  },
+  async deleteAllCloudData() {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { collection, query, orderBy, limit, getDocs, writeBatch } = await import('firebase/firestore')
+    const col = collection(db, 'users', uid, 'invoices')
+    let deleted = 0
+    for (;;) {
+      const q = query(col, orderBy('createdAt', 'desc'), limit(1000))
+      const snap = await getDocs(q)
+      if (snap.empty) break
+      const batch = writeBatch(db)
+      for (const d of snap.docs) batch.delete(d.ref)
+      await batch.commit()
+      deleted += snap.docs.length
+      if (snap.docs.length < 1000) break
+    }
+    return deleted
   },
   async changePassword(oldPassword, newPassword) {
     const { auth } = await getFirebase()

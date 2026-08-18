@@ -9,6 +9,7 @@ import NewInvoice from './pages/NewInvoice'
 import Search from './pages/Search'
 import Earnings from './pages/Earnings'
 import Settings from './pages/Settings'
+import Contacts from './pages/Contacts'
 import { Btn, Field, inputCls, ErrorBox } from './components/ui'
 
 function Unlock({ onUnlocked }) {
@@ -114,6 +115,7 @@ function AppShell() {
           <Route path="/new/:type" element={<NewInvoice />} />
           <Route path="/search" element={<Search />} />
           <Route path="/earnings" element={<Earnings />} />
+          <Route path="/contacts" element={<Contacts />} />
           <Route path="/settings" element={<Settings user={user} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

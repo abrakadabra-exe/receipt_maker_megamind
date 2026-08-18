@@ -134,6 +134,25 @@ const styles = StyleSheet.create({
   footerContact: { fontSize: 8.6, color: NAVY, fontWeight: 600, marginTop: 2 },
   footerThanks: { fontSize: 7.6, fontStyle: 'italic', color: GRAY, marginTop: 2 },
   footerPage: { fontSize: 7, color: GRAY, marginTop: 2 },
+  cancelledStamp: {
+    position: 'absolute',
+    top: 300,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    transform: 'rotate(-30deg)',
+  },
+  cancelledText: {
+    fontSize: 40,
+    fontWeight: 700,
+    color: 'rgba(220, 38, 38, 0.6)',
+    letterSpacing: 6,
+    borderWidth: 3.5,
+    borderColor: 'rgba(220, 38, 38, 0.6)',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 22,
+  },
 })
 
 function fmtDate(d) {
@@ -222,6 +241,11 @@ function InvoiceDoc({ invoice }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {invoice.status === 'cancelled' && (
+          <View style={styles.cancelledStamp} fixed>
+            <Text style={styles.cancelledText}>CANCELLED</Text>
+          </View>
+        )}
         <View style={styles.headerBand}>
           <View style={styles.logoChip}>
             <Image src={logoUrl} style={styles.logo} />

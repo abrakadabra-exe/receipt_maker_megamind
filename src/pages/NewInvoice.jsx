@@ -10,6 +10,20 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function useSyncedToday() {
+  const [value, setValue] = useState(today())
+  const [touched, setTouched] = useState(false)
+  useEffect(() => {
+    if (touched) return undefined
+    const id = setInterval(() => {
+      const t = today()
+      setValue((prev) => (prev === t ? prev : t))
+    }, 60000)
+    return () => clearInterval(id)
+  }, [touched])
+  return [value, setValue, setTouched]
+}
+
 function newItem(type) {
   const base = { desc: '', qty: 1, unitPrice: '', costPrice: '', taxPct: 0, total: 0 }
   if (type === 'product') base.warranty = ''
@@ -52,8 +66,11 @@ export default function NewInvoice() {
   const meta = typeMeta(type)
 
   const [client, setClient] = useState({ name: '', phone: '', address: '' })
-  const [date, setDate] = useState(today())
-  const [dueDate, setDueDate] = useState(today())
+  const [contacts, setContacts] = useState([])
+  const [showContacts, setShowContacts] = useState(false)
+  const [activeContact, setActiveContact] = useState(-1)
+  const [date, setDate, setDateTouched] = useSyncedToday()
+  const [dueDate, setDueDate, setDueDateTouched] = useSyncedToday()
   const [paymentMethod, setPaymentMethod] = useState('')
   const [notes, setNotes] = useState('')
   const [discount, setDiscount] = useState('')
@@ -69,6 +86,31 @@ export default function NewInvoice() {
     setPreviewState(null)
     setError('')
   }, [type])
+
+  useEffect(() => {
+    backend
+      .queryContacts('')
+      .then(setContacts)
+      .catch(() => setContacts([]))
+  }, [])
+
+  const suggestions = useMemo(() => {
+    const q = client.name.trim().toLowerCase()
+    if (!q) return []
+    return contacts.filter((c) => (c.name || '').toLowerCase().includes(q)).slice(0, 6)
+  }, [contacts, client.name])
+
+  function pickContact(c) {
+    setClient({ name: c.name, phone: c.phone || '', address: c.address || '' })
+    setShowContacts(false)
+    setActiveContact(-1)
+  }
+
+  function onClientNameChange(value) {
+    setClient({ ...client, name: value })
+    setShowContacts(true)
+    setActiveContact(-1)
+  }
 
   const totals = useMemo(() => {
     const subtotal = items.reduce(
@@ -150,6 +192,7 @@ export default function NewInvoice() {
         kind: it.kind || 'labour',
         total: itemTotal(it),
       })),
+      status: 'active',
       createdAt: Date.now(),
     }
   }
@@ -186,6 +229,9 @@ export default function NewInvoice() {
       const record = buildRecord(number)
       const encrypted = await buildEncryptedBlob(record)
       const stored = await backend.saveInvoice({ ...record, blob: encrypted })
+      if (client.name.trim()) {
+        backend.saveContact({ name: client.name, phone: client.phone, address: client.address }).catch(() => {})
+      }
       setSaved({ ...record, id: stored.id })
     } catch (err) {
       setError(err.message || 'Could not save invoice')
@@ -251,7 +297,31 @@ export default function NewInvoice() {
           <h3 className="mb-3 text-xs font-bold tracking-wide text-purple-800 uppercase">Billed To</h3>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Client / company name" className="sm:col-span-3">
-              <input className={inputCls} value={client.name} onChange={(e) => setClient({ ...client, name: e.target.value })} placeholder="e.g. Doctor's Healthcare LTD" />
+              <div className="relative">
+                <input
+                  className={inputCls}
+                  value={client.name}
+                  onChange={(e) => onClientNameChange(e.target.value)}
+                  onFocus={() => setShowContacts(true)}
+                  onBlur={() => setTimeout(() => setShowContacts(false), 150)}
+                  placeholder="e.g. Doctor's Healthcare LTD"
+                />
+                {showContacts && suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-navy-100 bg-white shadow-lg">
+                    {suggestions.map((c, i) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); pickContact(c) }}
+                        className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-orange-50 ${i === activeContact ? 'bg-orange-50' : ''}`}
+                      >
+                        <span className="font-semibold text-navy-900">{c.name}</span>
+                        {c.phone ? <span className="ml-2 text-xs text-navy-500">{c.phone}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </Field>
             <Field label="Phone">
               <input className={inputCls} value={client.phone} onChange={(e) => setClient({ ...client, phone: e.target.value })} placeholder="+880…" />
@@ -260,10 +330,10 @@ export default function NewInvoice() {
               <input className={inputCls} value={client.address} onChange={(e) => setClient({ ...client, address: e.target.value })} placeholder="Optional" />
             </Field>
             <Field label="Invoice date">
-              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+              <input type="date" className={inputCls} value={date} onChange={(e) => { setDate(e.target.value); setDateTouched(true) }} />
             </Field>
             <Field label="Due date">
-              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <input type="date" className={inputCls} value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDueDateTouched(true) }} />
             </Field>
             <Field label="Payment method">
               <input className={inputCls} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} placeholder="Cash / bKash / Bank…" />

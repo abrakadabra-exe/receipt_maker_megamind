@@ -11,6 +11,7 @@ const invoiceTypes = [
 const plainLinks = [
   { to: '/', label: 'Dashboard' },
   { to: '/search', label: 'Search' },
+  { to: '/contacts', label: 'Contacts' },
   { to: '/earnings', label: 'Earnings' },
   { to: '/settings', label: 'Settings' },
 ]
@@ -202,7 +203,7 @@ export default function Layout({ onLogout, children }) {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-5 pb-16 sm:px-4 sm:py-6">{children}</main>
       <footer className="border-t border-purple-100 bg-white px-4 py-4 text-center text-xs text-navy-500">
-        Megamind BD · +880199289339 · megamindbd.official@gmail.com
+        Developed by Megamind BD
       </footer>
     </div>
   )

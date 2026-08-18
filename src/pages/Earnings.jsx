@@ -38,7 +38,8 @@ export default function Earnings() {
   }, [])
 
   const byMonth = useMemo(() => {
-    const filtered = type ? rows.filter((r) => r.type === type) : rows
+    const active = rows.filter((r) => r.status !== 'cancelled')
+    const filtered = type ? active.filter((r) => r.type === type) : active
     const map = new Map()
     for (const inv of filtered) {
       const key = monthKey(inv.date)
@@ -69,6 +70,7 @@ export default function Earnings() {
   )
 
   const anyMissingCost = byMonth.some((m) => m.missingCost)
+  const cancelledCount = rows.filter((r) => r.status === 'cancelled').length
 
   async function view(id) {
     setBusyId(id)
@@ -123,6 +125,12 @@ export default function Earnings() {
         <div className="mt-4 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Some invoices were made before cost prices existed — they count with zero cost.
           Recreate those invoices with cost prices and the profit numbers will be exact.
+        </div>
+      )}
+
+      {cancelledCount > 0 && (
+        <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
+          {cancelledCount} cancelled invoice{cancelledCount > 1 ? 's' : ''} excluded from earnings above.
         </div>
       )}
 

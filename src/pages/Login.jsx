@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { backend, backendName, isDemoMode } from '../lib/store'
+import { backend } from '../lib/store'
 import { setMasterKey } from '../lib/session'
 import { Btn, Field, inputCls, ErrorBox } from '../components/ui'
 import logoUrl from '../assets/megamind-logo.png'
@@ -100,15 +100,6 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
         <p className="mt-1 text-sm text-navy-500">
           Professional invoices, securely stored
         </p>
-        {isDemoMode() ? (
-          <p className="mt-2 inline-block rounded-full bg-orange-100 px-3 py-1 text-[11px] font-semibold text-orange-800">
-            Demo mode (browser storage) — Firebase not configured
-          </p>
-        ) : (
-          <p className="mt-2 inline-block rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-800">
-            Connected to {backendName()}
-          </p>
-        )}
       </div>
 
       <div className="rounded-xl border border-navy-100 bg-white p-6 shadow-sm">
