@@ -75,7 +75,7 @@ export default function Dashboard({ user }) {
               <path d="M7 15l4-4 3 3 5-6" />
             </svg>
           </div>
-          <h3 className="mt-3 font-bold text-navy-900">Monthly earnings</h3>
+          <h3 className="mt-3 font-bold text-navy-900">Earnings</h3>
           <p className="mt-1 text-xs text-navy-500">Revenue, costs and profit by month</p>
         </Link>
       </div>
