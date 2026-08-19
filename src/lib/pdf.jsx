@@ -206,7 +206,7 @@ function InvoiceTable({ invoice }) {
         {cols.map((c) => (
           <Text
             key={c.key}
-            style={[styles.headCell, { flex: c.flex, textAlign: c.right ? 'right' : 'left' }]}
+            style={[styles.headCell, { flex: c.flex, textAlign: c.right ? 'right' : 'left', paddingHorizontal: 4 }]}
           >
             {c.label}
           </Text>
@@ -217,13 +217,10 @@ function InvoiceTable({ invoice }) {
           {cols.map((c) => {
             const isDesc = c.key === 'desc'
             return (
-              <View key={c.key} style={{ flex: c.flex }}>
+              <View key={c.key} style={{ flex: c.flex, paddingHorizontal: 4 }}>
                 <Text style={[c.right ? styles.cellRight : null, isDesc ? styles.cellBold : styles.cell]}>
                   {cellValue(item, c.key)}
                 </Text>
-                {isDesc && invoice.type === 'product' && item.warranty && (
-                  <Text style={styles.warranty}>Warranty: {item.warranty}</Text>
-                )}
               </View>
             )
           })}
