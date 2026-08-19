@@ -43,6 +43,7 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(0)
   const [recovery, setRecovery] = useState(null)
   const [pendingMasterKey, setPendingMasterKey] = useState(null)
 
@@ -64,6 +65,7 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
         mode === 'signup'
           ? await backend.signUp(email.trim().toLowerCase(), password)
           : await backend.signIn(email.trim().toLowerCase(), password)
+      setFailed(0)
       setMasterKey(res.masterKey)
       if (res.recovery) {
         setPendingMasterKey(res.masterKey)
@@ -72,7 +74,18 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
         onAuthed()
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong')
+      if (mode === 'login') {
+        setFailed((f) => f + 1)
+        if (failed + 1 >= 5) {
+          const wait = Math.min((failed + 1) * 5, 60)
+          setError(`Too many attempts. Try again in ${wait} seconds.`)
+          await new Promise((r) => setTimeout(r, wait * 1000))
+        } else {
+          setError(err.message || 'Something went wrong')
+        }
+      } else {
+        setError(err.message || 'Something went wrong')
+      }
     } finally {
       setBusy(false)
       onFlowEnd?.()

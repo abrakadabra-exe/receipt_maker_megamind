@@ -72,6 +72,8 @@ export default function NewInvoice() {
   const [date, setDate, setDateTouched] = useSyncedToday()
   const [dueDate, setDueDate, setDueDateTouched] = useSyncedToday()
   const [paymentMethod, setPaymentMethod] = useState('')
+  const [paymentDetail, setPaymentDetail] = useState('')
+  const [bankName, setBankName] = useState('')
   const [notes, setNotes] = useState('')
   const [discount, setDiscount] = useState('')
   const [repair, setRepair] = useState({ device: '', complaint: '', workDone: '' })
@@ -175,6 +177,8 @@ export default function NewInvoice() {
       dueDate,
       client,
       paymentMethod,
+      paymentDetail,
+      bankName,
       notes,
       discount: totals.discount,
       subtotal: totals.subtotal,
@@ -336,8 +340,34 @@ export default function NewInvoice() {
               <input type="date" className={inputCls} value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDueDateTouched(true) }} />
             </Field>
             <Field label="Payment method">
-              <input className={inputCls} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} placeholder="Cash / bKash / Bank…" />
+              <select
+                className={inputCls}
+                value={paymentMethod}
+                onChange={(e) => { setPaymentMethod(e.target.value); setPaymentDetail(''); setBankName('') }}
+              >
+                <option value="">Select method…</option>
+                <option value="Cash">Cash</option>
+                <option value="bKash">bKash</option>
+                <option value="Nagad">Nagad</option>
+                <option value="Card">Card</option>
+                <option value="Bank">Bank transfer</option>
+              </select>
             </Field>
+            {(paymentMethod === 'bKash' || paymentMethod === 'Nagad') && (
+              <Field label={`${paymentMethod} number`}>
+                <input className={inputCls} value={paymentDetail} onChange={(e) => setPaymentDetail(e.target.value)} placeholder={`Enter ${paymentMethod} number…`} />
+              </Field>
+            )}
+            {paymentMethod === 'Bank' && (
+              <>
+                <Field label="Bank name">
+                  <input className={inputCls} value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="e.g. bKash / Islami Bank…" />
+                </Field>
+                <Field label="Account number">
+                  <input className={inputCls} value={paymentDetail} onChange={(e) => setPaymentDetail(e.target.value)} placeholder="Enter account number…" />
+                </Field>
+              </>
+            )}
           </div>
         </Card>
 

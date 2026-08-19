@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import JSZip from 'jszip'
 import { backend, isDemoMode } from '../lib/store'
 import { bytesToBase64 } from '../lib/crypto'
@@ -15,6 +15,8 @@ export default function Settings({ user }) {
   const [backupBusy, setBackupBusy] = useState('')
   const [backupMsg, setBackupMsg] = useState('')
   const [backupError, setBackupError] = useState('')
+  const [restoreMsg, setRestoreMsg] = useState('')
+  const fileRef = useRef(null)
 
   async function changePassword(e) {
     e.preventDefault()
@@ -44,21 +46,23 @@ export default function Settings({ user }) {
     setBackupMsg('')
     try {
       const all = await backend.exportAllInvoices()
+      const contacts = await backend.exportAllContacts()
       const invoices = all.map(({ meta, blob }) => ({
         ...meta,
         blobB64: blob ? bytesToBase64(blob) : null,
       }))
       const data = {
-        version: 1,
+        version: 2,
         app: 'Megamind BD Invoice Manager',
         exportedAt: new Date().toISOString(),
         email: user?.email || '',
         invoices,
+        contacts,
       }
       const json = JSON.stringify(data)
       const blob = new Blob([json], { type: 'application/json' })
       downloadBlob(blob, `megamind-bd-backup-${stamp()}.json`)
-      setBackupMsg(`Backup downloaded with ${invoices.length} invoice${invoices.length === 1 ? '' : 's'} (includes encrypted PDF blobs).`)
+      setBackupMsg(`Backup downloaded with ${invoices.length} invoice${invoices.length === 1 ? '' : 's'} and ${contacts.length} contact${contacts.length === 1 ? '' : 's'} (includes encrypted PDF blobs).`)
     } catch (err) {
       setBackupError(err.message || 'Could not export backup')
     } finally {
@@ -109,6 +113,31 @@ export default function Settings({ user }) {
     }
   }
 
+  async function restoreFromFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setRestoreMsg('')
+    setBackupError('')
+    setBackupBusy('Reading backup…')
+    try {
+      const data = JSON.parse(await file.text())
+      if (data.app !== 'Megamind BD Invoice Manager' || !Array.isArray(data.invoices)) {
+        throw new Error('This file is not a Megamind BD backup.')
+      }
+      if (!window.confirm(
+        `Restore ${data.invoices.length} invoice${data.invoices.length === 1 ? '' : 's'}${data.contacts?.length ? ` and ${data.contacts.length} contact${data.contacts.length === 1 ? '' : 's'}` : ''}?\n\nInvoices already on this account will be skipped.`,
+      )) return
+      setBackupBusy('Restoring…')
+      const res = await backend.importFromBackup(data)
+      setRestoreMsg(`Imported ${res.imported} invoice${res.imported === 1 ? '' : 's'}${res.contacts ? ` and ${res.contacts} contact${res.contacts === 1 ? '' : 's'}` : ''}. ${res.skipped} skipped — already on this account.`)
+    } catch (err) {
+      setBackupError(err.message || 'Could not restore backup')
+    } finally {
+      setBackupBusy('')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <SectionTitle sub="Account, security and storage status.">Settings</SectionTitle>
@@ -133,6 +162,16 @@ export default function Settings({ user }) {
           <Btn variant="outline" onClick={exportZip} disabled={!!backupBusy}>
             {backupBusy === 'Decrypting PDFs…' ? backupBusy : 'Export all PDFs (ZIP)'}
           </Btn>
+          <Btn variant="outline" onClick={() => fileRef.current?.click()} disabled={!!backupBusy}>
+            Restore from backup
+          </Btn>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={restoreFromFile}
+          />
           {!isDemoMode() && (
             <Btn variant="danger" onClick={deleteCloud} disabled={!!backupBusy}>
               {backupBusy === 'Deleting cloud data…' ? backupBusy : 'Delete cloud data'}
@@ -142,6 +181,9 @@ export default function Settings({ user }) {
         {backupError && <ErrorBox>{backupError}</ErrorBox>}
         {backupMsg && (
           <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{backupMsg}</div>
+        )}
+        {restoreMsg && (
+          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{restoreMsg}</div>
         )}
         {isDemoMode() && (
           <p className="mt-3 text-xs text-navy-400">
@@ -174,18 +216,6 @@ export default function Settings({ user }) {
         </form>
       </Card>
 
-      <Card className="mt-5">
-        <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Security</h3>
-        <ul className="mt-3 space-y-2 text-sm text-navy-600">
-          <li>• PDFs are compressed (deflate) then encrypted with AES-256-GCM in your browser.</li>
-          <li>• The encryption key is derived from your password (PBKDF2, 310,000 rounds).</li>
-          <li>• Only encrypted blobs are uploaded — the cloud never sees your invoices.</li>
-          <li>
-            • If you ever forget your password, only your recovery phrase can unlock your
-            invoices. Keep it safe — it was shown once at sign-up.
-          </li>
-        </ul>
-      </Card>
-    </div>
+      </div>
   )
 }

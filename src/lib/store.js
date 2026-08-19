@@ -9,6 +9,31 @@ function encodePassword(password, saltB64) {
   ).then((h) => bytesToBase64(new Uint8Array(h)))
 }
 
+async function encodePasswordPbkdf2(password, saltB64) {
+  const salt = base64ToBytes(saltB64)
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  )
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
+    baseKey,
+    256,
+  )
+  return `pbkdf2$${bytesToBase64(new Uint8Array(bits))}`
+}
+
+async function verifyPassword(email, password, salt, storedHash) {
+  if (storedHash && storedHash.startsWith('pbkdf2$')) {
+    return (await encodePasswordPbkdf2(password, salt)) === storedHash
+  }
+  const legacy = await encodePassword(password, salt)
+  return legacy === storedHash
+}
+
 /* ---------------- Local demo backend (no Firebase config) ---------------- */
 
 const DEMO_PREFIX = 'mbdemo_'
@@ -51,7 +76,7 @@ const demo = {
     const users = demoUsers()
     if (users[email]) throw new Error('An account with this email already exists')
     const salt = crypto.randomUUID()
-    const hash = await encodePassword(password, salt)
+    const hash = await encodePasswordPbkdf2(password, salt)
     users[email] = { salt, hash }
     demoSaveUsers(users)
     localStorage.setItem(`${DEMO_PREFIX}session`, email)
@@ -63,9 +88,10 @@ const demo = {
   async signIn(email, password) {
     const users = demoUsers()
     const user = users[email]
-    if (!user) throw new Error('No account found with this email')
-    const hash = await encodePassword(password, user.salt)
-    if (hash !== user.hash) throw new Error('Incorrect password')
+    if (!user) throw new Error('Invalid email or password')
+    if (!(await verifyPassword(email, password, user.salt, user.hash))) {
+      throw new Error('Invalid email or password')
+    }
     localStorage.setItem(`${DEMO_PREFIX}session`, email)
     const stored = localStorage.getItem(demoUserKey(email))
     if (!stored) {
@@ -183,6 +209,34 @@ const demo = {
       return { meta, blob: base64ToBytes(blobB64) }
     })
   },
+  async exportAllContacts() {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    return demoContacts(email)
+  },
+  async importFromBackup(data) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    let imported = 0
+    let skipped = 0
+    let contacts = 0
+    const existing = demoInvoices(email)
+    const existingIds = new Set(existing.map((i) => i.id))
+    for (const inv of (data.invoices || [])) {
+      if (!inv || !inv.blobB64) { skipped++; continue }
+      if (existingIds.has(inv.id)) { skipped++; continue }
+      const { blobB64, ...meta } = inv
+      await this.saveInvoice({ ...meta, blob: base64ToBytes(blobB64) })
+      existingIds.add(inv.id)
+      imported++
+    }
+    for (const c of (data.contacts || [])) {
+      if (!c || !c.name) continue
+      await this.saveContact({ name: c.name, phone: c.phone, address: c.address })
+      contacts++
+    }
+    return { imported, skipped, contacts }
+  },
   async deleteAllCloudData() {
     return 0
   },
@@ -192,12 +246,11 @@ const demo = {
     const users = demoUsers()
     const user = users[email]
     if (!user) throw new Error('No account found')
-    const oldHash = await encodePassword(oldPassword, user.salt)
-    if (oldHash !== user.hash) throw new Error('Current password is incorrect')
+    if (!(await verifyPassword(email, oldPassword, user.salt, user.hash))) throw new Error('Current password is incorrect')
     const stored = JSON.parse(localStorage.getItem(demoUserKey(email)))
     const masterKey = await unwrapMasterKey(oldPassword, stored.salt, stored.wrappedKey)
     const newSalt = crypto.randomUUID()
-    const newHash = await encodePassword(newPassword, newSalt)
+    const newHash = await encodePasswordPbkdf2(newPassword, newSalt)
     users[email] = { salt: newSalt, hash: newHash }
     demoSaveUsers(users)
     const rewrapped = await rewrapMasterKey(bytesToBase64(masterKey), newPassword)
@@ -239,7 +292,12 @@ const fb = {
   async signIn(email, password) {
     const { auth } = await getFirebase()
     const { signInWithEmailAndPassword } = await import('firebase/auth')
-    const cred = await signInWithEmailAndPassword(auth, email, password)
+    let cred
+    try {
+      cred = await signInWithEmailAndPassword(auth, email, password)
+    } catch {
+      throw new Error('Invalid email or password')
+    }
     const profile = await this.getProfile(cred.user.uid)
     if (!profile) {
       const keys = await setupUserKeys(password)
@@ -301,6 +359,9 @@ const fb = {
       total: meta.total,
       costTotal: meta.costTotal || 0,
       status: meta.status || 'active',
+      paymentMethod: meta.paymentMethod || '',
+      paymentDetail: meta.paymentDetail || '',
+      bankName: meta.bankName || '',
       createdAt: meta.createdAt,
       blob: record.blob ? Bytes.fromUint8Array(record.blob) : null,
     })
@@ -416,6 +477,34 @@ const fb = {
       cursor = snap.docs[snap.docs.length - 1]
     }
     return out
+  },
+  async exportAllContacts() {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { collection, getDocs } = await import('firebase/firestore')
+    const snap = await getDocs(collection(db, 'users', uid, 'contacts'))
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+  async importFromBackup(data) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, getDoc } = await import('firebase/firestore')
+    let imported = 0
+    let skipped = 0
+    let contacts = 0
+    for (const inv of (data.invoices || [])) {
+      if (!inv || !inv.blobB64) { skipped++; continue }
+      if (inv.id && (await getDoc(doc(db, 'users', uid, 'invoices', inv.id))).exists()) { skipped++; continue }
+      const { blobB64, ...meta } = inv
+      await this.saveInvoice({ ...meta, blob: base64ToBytes(blobB64) })
+      imported++
+    }
+    for (const c of (data.contacts || [])) {
+      if (!c || !c.name) continue
+      await this.saveContact({ name: c.name, phone: c.phone, address: c.address })
+      contacts++
+    }
+    return { imported, skipped, contacts }
   },
   async deleteAllCloudData() {
     const uid = await fbCurrentUid()

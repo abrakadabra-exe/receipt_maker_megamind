@@ -11,7 +11,6 @@ const invoiceTypes = [
 const plainLinks = [
   { to: '/', label: 'Dashboard' },
   { to: '/search', label: 'Search' },
-  { to: '/contacts', label: 'Contacts' },
   { to: '/earnings', label: 'Earnings' },
   { to: '/settings', label: 'Settings' },
 ]
@@ -205,6 +204,19 @@ export default function Layout({ onLogout, children }) {
       <footer className="border-t border-purple-100 bg-white px-4 py-4 text-center text-xs text-navy-500">
         Developed by Megamind BD
       </footer>
+      <NavLink
+        to="/contacts"
+        aria-label="Contacts"
+        title="Contacts"
+        className="fixed bottom-6 right-6 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-purple-700 text-white shadow-lg transition hover:bg-purple-800 hover:shadow-xl"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </NavLink>
     </div>
   )
 }

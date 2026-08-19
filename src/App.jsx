@@ -16,6 +16,7 @@ function Unlock({ onUnlocked }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(0)
 
   async function submit(e) {
     e.preventDefault()
@@ -26,7 +27,12 @@ function Unlock({ onUnlocked }) {
       setMasterKey(masterKey)
       onUnlocked()
     } catch (err) {
+      setFailed((f) => f + 1)
       setError(err.message || 'Could not unlock')
+      if (failed + 1 >= 5) {
+        setError(`Too many failed attempts. Wait ${Math.min((failed + 1) * 5, 60)} seconds and try again.`)
+        await new Promise((r) => setTimeout(r, Math.min((failed + 1) * 5000, 60000)))
+      }
     } finally {
       setBusy(false)
     }

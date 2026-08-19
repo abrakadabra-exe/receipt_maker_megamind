@@ -59,7 +59,7 @@ try {
   await page.fill('input[placeholder*="Doctor"]', 'Test Client Ltd')
   await page.fill('input[placeholder*="+880"]', '+8801711111111')
   await page.fill('input[placeholder="Optional"]', 'Dhaka, Bangladesh')
-  await page.fill('input[placeholder*="Cash / bKash"]', 'bKash')
+  await field('Payment method').selectOption('bKash')
   await page.fill('input[placeholder*="Payment terms"]', 'Due on receipt')
   await fillItem(0, { desc: 'FB BOOST 7 DAYS', qty: '1', price: '3020', cost: '2000', tax: '5' })
 

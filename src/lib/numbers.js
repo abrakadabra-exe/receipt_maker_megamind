@@ -11,9 +11,10 @@ export function typeMeta(id) {
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 function randomToken(n) {
+  const bytes = crypto.getRandomValues(new Uint8Array(n))
   let out = ''
   for (let i = 0; i < n; i++) {
-    out += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
+    out += ALPHABET[bytes[i] % ALPHABET.length]
   }
   return out
 }

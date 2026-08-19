@@ -165,6 +165,9 @@ export default function Search() {
               <p className="text-xs text-navy-400">
                 {fmtDate(r.date)}
                 {r.dueDate && r.dueDate !== r.date ? ` · due ${fmtDate(r.dueDate)}` : ''}
+                {r.paymentMethod ? ` · ${r.paymentMethod}` : ''}
+                {r.paymentDetail ? ` · ${r.paymentDetail}` : ''}
+                {r.bankName ? ` · ${r.bankName}` : ''}
               </p>
             </div>
             <div className="text-right">
