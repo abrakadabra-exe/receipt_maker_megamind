@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
 import { backend, isDemoMode } from '../lib/store'
 import { bytesToBase64 } from '../lib/crypto'
@@ -18,7 +18,28 @@ export default function Settings({ user }) {
   const [backupError, setBackupError] = useState('')
   const [restoreMsg, setRestoreMsg] = useState('')
   const [lockMsg, setLockMsg] = useState('')
+  const [username, setUsername] = useState('')
+  const [nameMsg, setNameMsg] = useState('')
+  const [savingName, setSavingName] = useState(false)
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    backend.getUsername().then(setUsername).catch(() => {})
+  }, [])
+
+  async function saveUsername() {
+    setSavingName(true)
+    setNameMsg('')
+    try {
+      const saved = await backend.saveUsername(username)
+      setUsername(saved)
+      setNameMsg(saved ? `Username updated to "${saved}".` : 'Username cleared.')
+    } catch (err) {
+      setNameMsg(err.message || 'Could not save username')
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   async function changePassword(e) {
     e.preventDefault()
@@ -149,6 +170,25 @@ export default function Settings({ user }) {
         <div className="mt-3">
           <span className="text-sm font-semibold break-all text-navy-900">{user?.email}</span>
         </div>
+        <div className="mt-4 flex max-w-xs flex-wrap items-end gap-2">
+          <div className="flex-1">
+            <Field label="Username">
+              <input
+                className={inputCls}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="What should we call you?"
+                maxLength={40}
+              />
+            </Field>
+          </div>
+          <Btn onClick={saveUsername} disabled={savingName} className="!px-4 !py-2.5">
+            {savingName ? 'Saving…' : 'Save'}
+          </Btn>
+        </div>
+        {nameMsg && (
+          <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{nameMsg}</div>
+        )}
         <div className="mt-4 max-w-xs">
           <Field label="Auto-lock after inactivity">
             <select

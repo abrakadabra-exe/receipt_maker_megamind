@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { backend } from '../lib/store'
 import { TYPES } from '../lib/numbers'
 
 const ICONS = {
@@ -29,11 +30,17 @@ const ICONS = {
 }
 
 export default function Dashboard({ user }) {
+  const [username, setUsername] = useState('')
+
+  useEffect(() => {
+    backend.getUsername().then(setUsername).catch(() => {})
+  }, [])
+
   return (
     <div>
       <div className="rounded-xl bg-purple-700 p-6 text-white shadow-md">
         <p className="text-xs font-semibold tracking-widest text-orange-300 uppercase">Welcome back</p>
-        <h1 className="mt-1 text-2xl font-bold break-all">{user?.email}</h1>
+        <h1 className="mt-1 text-2xl font-bold break-all">{username || user?.email}</h1>
         <p className="mt-2 text-sm text-purple-100">
           Create a new invoice or find an existing one. Every PDF is compressed,
           encrypted on this device and stored securely in the cloud.

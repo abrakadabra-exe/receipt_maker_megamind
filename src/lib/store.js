@@ -268,6 +268,19 @@ const demo = {
     const stored = localStorage.getItem(demoUserKey(email))
     return stored ? JSON.parse(stored) : null
   },
+  async getUsername() {
+    const email = this.getCurrentUser()?.email
+    if (!email) return ''
+    return localStorage.getItem(`${DEMO_PREFIX}${email}_name`) || ''
+  },
+  async saveUsername(username) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const clean = (username || '').trim()
+    if (clean.length > 40) throw new Error('Username must be 40 characters or fewer')
+    localStorage.setItem(`${DEMO_PREFIX}${email}_name`, clean)
+    return clean
+  },
 }
 
 /* ---------------- Firebase backend ---------------- */
@@ -549,6 +562,20 @@ const fb = {
   async getKeyMaterial() {
     const uid = await fbCurrentUid()
     return this.getProfile(uid)
+  },
+  async getUsername() {
+    const uid = await fbCurrentUid()
+    const profile = await this.getProfile(uid)
+    return profile?.displayName || ''
+  },
+  async saveUsername(username) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, setDoc } = await import('firebase/firestore')
+    const clean = (username || '').trim()
+    if (clean.length > 40) throw new Error('Username must be 40 characters or fewer')
+    await setDoc(doc(db, 'users', uid), { displayName: clean }, { merge: true })
+    return clean
   },
 }
 
