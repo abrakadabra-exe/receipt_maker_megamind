@@ -21,9 +21,47 @@ function invoiceProfit(inv) {
   return { cost, hasCost: inv.costTotal !== undefined && inv.costTotal !== null, profit: (Number(inv.total) || 0) - cost }
 }
 
+const RANGES = [
+  { id: 'all', label: 'All' },
+  { id: '7d', label: '7 days' },
+  { id: '30d', label: '30 days' },
+  { id: 'month', label: 'This month' },
+  { id: 'lastMonth', label: 'Last month' },
+]
+
+function iso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function rangeBounds(range, fromDate, toDate) {
+  const today = new Date()
+  switch (range) {
+    case '7d':
+      return { from: iso(new Date(today.getTime() - 7 * 86400000)), to: iso(today) }
+    case '30d':
+      return { from: iso(new Date(today.getTime() - 30 * 86400000)), to: iso(today) }
+    case 'month': {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { from: iso(first), to: iso(today) }
+    }
+    case 'lastMonth': {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+      const last = new Date(today.getFullYear(), today.getMonth(), 0)
+      return { from: iso(first), to: iso(last) }
+    }
+    case 'custom':
+      return { from: fromDate, to: toDate }
+    default:
+      return { from: '', to: '' }
+  }
+}
+
 export default function Earnings() {
   const [rows, setRows] = useState([])
   const [type, setType] = useState('')
+  const [range, setRange] = useState('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [openMonth, setOpenMonth] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
@@ -38,8 +76,11 @@ export default function Earnings() {
   }, [])
 
   const byMonth = useMemo(() => {
+    const { from, to } = rangeBounds(range, fromDate, toDate)
     const active = rows.filter((r) => r.status !== 'cancelled')
-    const filtered = type ? active.filter((r) => r.type === type) : active
+    let filtered = type ? active.filter((r) => r.type === type) : active
+    if (from) filtered = filtered.filter((i) => i.date >= from)
+    if (to) filtered = filtered.filter((i) => i.date <= to)
     const map = new Map()
     for (const inv of filtered) {
       const key = monthKey(inv.date)
@@ -54,7 +95,7 @@ export default function Earnings() {
         return { key, invoices, revenue, cost, missingCost, profit: revenue - cost }
       })
       .sort((a, b) => (a.key < b.key ? 1 : -1))
-  }, [rows, type])
+  }, [rows, type, range, fromDate, toDate])
 
   const totals = useMemo(
     () => byMonth.reduce(
@@ -71,6 +112,13 @@ export default function Earnings() {
 
   const anyMissingCost = byMonth.some((m) => m.missingCost)
   const cancelledCount = rows.filter((r) => r.status === 'cancelled').length
+
+  function pickRange(id) {
+    setRange(id)
+    setFromDate('')
+    setToDate('')
+    setOpenMonth(null)
+  }
 
   async function view(id) {
     setBusyId(id)
@@ -97,12 +145,60 @@ export default function Earnings() {
 
   return (
     <div>
-      <SectionTitle sub="Your revenue, costs and profit for every month. Cost prices never appear on client PDFs.">
-        Monthly earnings
+      <SectionTitle sub="Revenue, costs and profit for any period. Cost prices never appear on client PDFs.">
+        Earnings
       </SectionTitle>
 
       <Card>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {RANGES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => pickRange(r.id)}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                range === r.id
+                  ? 'bg-orange-500 text-white shadow'
+                  : 'bg-navy-50 text-navy-700 hover:bg-navy-100'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => pickRange('custom')}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              range === 'custom'
+                ? 'bg-orange-500 text-white shadow'
+                : 'bg-navy-50 text-navy-700 hover:bg-navy-100'
+            }`}
+          >
+            Custom
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="w-40">
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-navy-700 uppercase">From date</span>
+            <input
+              type="date"
+              className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 disabled:opacity-50"
+              value={fromDate}
+              disabled={range !== 'custom'}
+              onChange={(e) => { setFromDate(e.target.value); setRange('custom') }}
+            />
+          </div>
+          <div className="w-40">
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-navy-700 uppercase">To date</span>
+            <input
+              type="date"
+              className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 disabled:opacity-50"
+              value={toDate}
+              disabled={range !== 'custom'}
+              onChange={(e) => { setToDate(e.target.value); setRange('custom') }}
+            />
+          </div>
           <div className="w-full sm:w-56">
             <span className="mb-1 block text-xs font-semibold tracking-wide text-navy-700 uppercase">Invoice type</span>
             <select
@@ -121,6 +217,21 @@ export default function Earnings() {
 
       <ErrorBox>{error}</ErrorBox>
 
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <Card className="border-l-4 !border-l-orange-500">
+          <p className="text-xs font-bold tracking-wide text-navy-500 uppercase">Revenue</p>
+          <p className="mt-1 text-xl font-bold text-navy-900">{bdt(totals.revenue)}</p>
+        </Card>
+        <Card className="border-l-4 !border-l-purple-500">
+          <p className="text-xs font-bold tracking-wide text-navy-500 uppercase">Cost</p>
+          <p className="mt-1 text-xl font-bold text-navy-900">{bdt(totals.cost)}</p>
+        </Card>
+        <Card className="border-l-4 !border-l-emerald-500">
+          <p className="text-xs font-bold tracking-wide text-navy-500 uppercase">Profit</p>
+          <p className={`mt-1 text-xl font-bold ${totals.profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{bdt(totals.profit)}</p>
+        </Card>
+      </div>
+
       {anyMissingCost && (
         <div className="mt-4 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-900">
           Some invoices were made before cost prices existed — they count with zero cost.
@@ -135,7 +246,7 @@ export default function Earnings() {
       )}
 
       {loaded && byMonth.length === 0 && (
-        <Card className="mt-5 text-center text-sm text-navy-500">No invoices yet.</Card>
+        <Card className="mt-5 text-center text-sm text-navy-500">No invoices in this period.</Card>
       )}
 
       {byMonth.length > 0 && (

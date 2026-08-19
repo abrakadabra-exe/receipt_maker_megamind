@@ -123,18 +123,20 @@ export default function NewInvoice() {
       (s, it) => s + (Number(it.qty) || 0) * (Number(it.costPrice) || 0),
       0,
     )
-    const taxTotal = items.reduce(
+    const disc = Number(discount) || 0
+    const taxable = subtotal - disc
+    const taxedSubtotal = items.reduce(
       (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) * ((Number(it.taxPct) || 0) / 100),
       0,
     )
-    const disc = Number(discount) || 0
+    const taxTotal = subtotal > 0 ? (taxedSubtotal / subtotal) * taxable : 0
     return {
       subtotal,
       costTotal,
       taxTotal,
       discount: disc,
-      total: subtotal - disc + taxTotal,
-      profit: subtotal - disc + taxTotal - costTotal,
+      total: taxable + taxTotal,
+      profit: taxable + taxTotal - costTotal,
     }
   }, [items, discount])
 
@@ -349,7 +351,6 @@ export default function NewInvoice() {
                 <option value="Cash">Cash</option>
                 <option value="bKash">bKash</option>
                 <option value="Nagad">Nagad</option>
-                <option value="Card">Card</option>
                 <option value="Bank">Bank transfer</option>
               </select>
             </Field>

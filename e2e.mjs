@@ -163,7 +163,6 @@ try {
   /* -------- Earnings -------- */
   await page.click('text=Dashboard')
   await page.click('text=Monthly earnings')
-  await page.waitForSelector('text=Monthly earnings')
   await page.waitForTimeout(1000)
   const totalRow = await page.locator('tfoot').innerText()
   const totalsOk =
