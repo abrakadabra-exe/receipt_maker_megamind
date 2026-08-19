@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
   cell: { fontSize: 8.3 },
   cellBold: { fontSize: 8.3, fontWeight: 600 },
   cellRight: { textAlign: 'right' },
+  cellCenter: { textAlign: 'center' },
   warranty: { fontSize: 7, color: ORANGE_DARK, fontWeight: 600, marginTop: 1.5 },
   workDone: {
     marginTop: 10,
@@ -173,14 +174,15 @@ const COLUMNS = {
     { key: 'desc', label: 'Description', flex: 3.9 },
     { key: 'qty', label: 'Qty', flex: 1 },
     { key: 'unitPrice', label: 'Unit Price (BDT)', flex: 1.8, right: true },
-    { key: 'warranty', label: 'Warranty', flex: 2 },
+    { key: 'warranty', label: 'Warranty', flex: 2, center: true },
     { key: 'total', label: 'Total (BDT)', flex: 1.5, right: true },
   ],
   repair: [
     { key: 'kind', label: 'Type', flex: 1.1 },
-    { key: 'desc', label: 'Description', flex: 3.6 },
+    { key: 'desc', label: 'Description', flex: 3.4 },
     { key: 'qty', label: 'Qty', flex: 0.9 },
-    { key: 'unitPrice', label: 'Unit Price (BDT)', flex: 1.8, right: true },
+    { key: 'unitPrice', label: 'Unit Price (BDT)', flex: 1.6, right: true },
+    { key: 'warranty', label: 'Warranty', flex: 1.5, center: true },
     { key: 'total', label: 'Total (BDT)', flex: 1.5, right: true },
   ],
 }
@@ -206,7 +208,7 @@ function InvoiceTable({ invoice }) {
         {cols.map((c) => (
           <Text
             key={c.key}
-            style={[styles.headCell, { flex: c.flex, textAlign: c.right ? 'right' : 'left', paddingHorizontal: 4 }]}
+            style={[styles.headCell, { flex: c.flex, textAlign: c.right ? 'right' : c.center ? 'center' : 'left', paddingHorizontal: 4 }]}
           >
             {c.label}
           </Text>
@@ -218,7 +220,7 @@ function InvoiceTable({ invoice }) {
             const isDesc = c.key === 'desc'
             return (
               <View key={c.key} style={{ flex: c.flex, paddingHorizontal: 4 }}>
-                <Text style={[c.right ? styles.cellRight : null, isDesc ? styles.cellBold : styles.cell]}>
+                <Text style={[c.right ? styles.cellRight : c.center ? styles.cellCenter : null, isDesc ? styles.cellBold : styles.cell]}>
                   {cellValue(item, c.key)}
                 </Text>
               </View>

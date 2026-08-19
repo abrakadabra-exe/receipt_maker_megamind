@@ -55,6 +55,7 @@ const TYPE_COLUMNS = {
     { key: 'qty', label: 'Qty', width: '4.5rem' },
     { key: 'unitPrice', label: 'Unit price (BDT)', width: '7rem' },
     { key: 'costPrice', label: 'Cost price (BDT)', width: '7rem' },
+    { key: 'warranty', label: 'Warranty', width: '6rem' },
     { key: 'taxPct', label: 'Tax %', width: '4.5rem' },
     { key: 'total', label: 'Total', width: '7rem', readOnly: true },
   ],
