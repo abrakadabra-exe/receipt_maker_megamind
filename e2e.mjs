@@ -162,7 +162,7 @@ try {
 
   /* -------- Earnings -------- */
   await page.click('text=Dashboard')
-  await page.click('text=Monthly earnings')
+  await page.click('header a:has-text("Earnings")')
   await page.waitForTimeout(1000)
   const totalRow = await page.locator('tfoot').innerText()
   const totalsOk =

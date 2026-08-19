@@ -67,7 +67,7 @@ function demoInvoices(email) {
 }
 
 function demoRandomId() {
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `id-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
 }
 
 const demo = {

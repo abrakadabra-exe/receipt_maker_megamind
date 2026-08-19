@@ -3,6 +3,7 @@ import JSZip from 'jszip'
 import { backend, isDemoMode } from '../lib/store'
 import { bytesToBase64 } from '../lib/crypto'
 import { decryptToBlob, downloadBlob } from '../lib/invoiceCrypto'
+import { getLockMinutes, setLockMinutes } from '../lib/lockMinutes'
 import { Btn, Field, inputCls, Card, SectionTitle, ErrorBox } from '../components/ui'
 
 export default function Settings({ user }) {
@@ -16,6 +17,7 @@ export default function Settings({ user }) {
   const [backupMsg, setBackupMsg] = useState('')
   const [backupError, setBackupError] = useState('')
   const [restoreMsg, setRestoreMsg] = useState('')
+  const [lockMsg, setLockMsg] = useState('')
   const fileRef = useRef(null)
 
   async function changePassword(e) {
@@ -146,6 +148,32 @@ export default function Settings({ user }) {
         <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Account</h3>
         <div className="mt-3">
           <span className="text-sm font-semibold break-all text-navy-900">{user?.email}</span>
+        </div>
+        <div className="mt-4 max-w-xs">
+          <Field label="Auto-lock after inactivity">
+            <select
+              className={inputCls}
+              value={getLockMinutes()}
+              onChange={(e) => {
+                setLockMinutes(Number(e.target.value))
+                setLockMsg('Saved — takes effect the next time you go idle.')
+              }}
+            >
+              <option value={5}>5 minutes</option>
+              <option value={10}>10 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>60 minutes</option>
+              <option value={0}>Never (not recommended)</option>
+            </select>
+          </Field>
+          <p className="mt-1 text-xs text-navy-500">
+            When you stop using the app for this long, your encryption key is cleared and
+            you must enter your password again to view invoices.
+          </p>
+          {lockMsg && (
+            <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{lockMsg}</div>
+          )}
         </div>
       </Card>
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { backend } from './lib/store'
 import { setMasterKey, clearMasterKey, hasMasterKey } from './lib/session'
+import { getLockMinutes } from './lib/lockMinutes'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -11,6 +12,29 @@ import Earnings from './pages/Earnings'
 import Settings from './pages/Settings'
 import Contacts from './pages/Contacts'
 import { Btn, Field, inputCls, ErrorBox } from './components/ui'
+
+function useIdleTimeout(enabled, onLock) {
+  const onLockRef = useRef(onLock)
+  useEffect(() => { onLockRef.current = onLock }, [onLock])
+
+  useEffect(() => {
+    if (!enabled) return undefined
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'wheel']
+    let timer = null
+    function reset() {
+      if (timer) clearTimeout(timer)
+      const minutes = getLockMinutes()
+      if (!minutes) { timer = null; return }
+      timer = setTimeout(() => onLockRef.current(), minutes * 60 * 1000)
+    }
+    events.forEach((ev) => window.addEventListener(ev, reset, { passive: true }))
+    reset()
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, reset))
+      if (timer) clearTimeout(timer)
+    }
+  }, [enabled])
+}
 
 function Unlock({ onUnlocked }) {
   const [password, setPassword] = useState('')
@@ -89,6 +113,13 @@ function AppShell() {
     setUser(null)
   }
 
+  const locked = user && !hasMasterKey() && location.pathname !== '/login'
+
+  useIdleTimeout(!!user && !locked, () => {
+    clearMasterKey()
+    setUser((u) => ({ ...u }))
+  })
+
   if (!ready) return null
 
   if (!user) {
@@ -106,8 +137,6 @@ function AppShell() {
       />
     )
   }
-
-  const locked = !hasMasterKey() && location.pathname !== '/login'
 
   return (
     <Layout user={user} onLogout={logout}>
