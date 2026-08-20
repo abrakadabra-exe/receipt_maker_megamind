@@ -13,7 +13,7 @@ export const DEFAULT_PROFILES = {
     phone: '+880199289339',
     email: 'safatenterprise@gmail.com',
     logo: '',
-    logoOnDark: false,
+    logoOnDark: true,
   },
   repair: {
     phone: '+880199289339',
