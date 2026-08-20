@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { generateNumber, typeMeta } from '../lib/numbers'
-import { buildEncryptedBlob, decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
+import { buildEncryptedBlob, buildPdfBlob, decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
 import { bdt } from '../lib/money'
 import { Btn, Field, inputCls, Card, ErrorBox, SectionTitle } from '../components/ui'
 
@@ -204,20 +204,21 @@ export default function NewInvoice() {
     }
   }
 
-  async function renderPdf(record) {
+  async function renderPdf(record, bw = false) {
+    if (bw) return buildPdfBlob(record, { bw: true })
     const encrypted = await buildEncryptedBlob(record)
     return decryptToBlob(encrypted)
   }
 
-  async function preview(e) {
+  async function preview(e, bw = false) {
     e.preventDefault()
     setError('')
     const problem = validate()
     if (problem) { setError(problem); return }
     setBusy(true)
     try {
-      const blob = await renderPdf(buildRecord('PREVIEW'))
-      setPreviewState({ url: URL.createObjectURL(blob), number: "PREVIEW" })
+      const blob = await renderPdf(buildRecord('PREVIEW'), bw)
+      setPreviewState({ url: URL.createObjectURL(blob), number: bw ? 'PREVIEW (B&W)' : 'PREVIEW' })
     } catch (err) {
       setError(err.message || 'Could not generate preview')
     } finally {
@@ -244,6 +245,16 @@ export default function NewInvoice() {
       setError(err.message || 'Could not save invoice')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function downloadSavedBw() {
+    if (!saved) return
+    try {
+      const blob = await buildPdfBlob(saved, { bw: true })
+      downloadBlob(blob, `${saved.number}-bw.pdf`)
+    } catch (err) {
+      setError(err.message || 'Could not generate black & white PDF')
     }
   }
 
@@ -283,6 +294,7 @@ export default function NewInvoice() {
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Btn variant="gold" onClick={viewSaved}>View PDF</Btn>
             <Btn variant="outline" onClick={downloadSaved}>Download</Btn>
+            <Btn variant="outline" onClick={downloadSavedBw}>Download B&amp;W</Btn>
             <Btn variant="ghost" onClick={() => { setSaved(null); setItems([newItem(type)]) }}>New invoice</Btn>
             <Btn variant="ghost" onClick={() => navigate('/')}>Dashboard</Btn>
           </div>
@@ -514,8 +526,11 @@ export default function NewInvoice() {
           <Btn type="submit" variant="gold" disabled={busy} className="flex-1 sm:flex-none">
             {busy ? 'Encrypting & saving…' : 'Save invoice'}
           </Btn>
-          <Btn type="button" variant="outline" onClick={preview} disabled={busy}>
+          <Btn type="button" variant="outline" onClick={(e) => preview(e, false)} disabled={busy}>
             Preview PDF
+          </Btn>
+          <Btn type="button" variant="outline" onClick={(e) => preview(e, true)} disabled={busy}>
+            Preview B&amp;W
           </Btn>
           <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-purple-800 transition hover:bg-purple-50">
             Cancel

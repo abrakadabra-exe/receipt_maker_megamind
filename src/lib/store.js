@@ -373,25 +373,16 @@ const fb = {
     const { db } = await getFirebase()
     const { doc, setDoc, Bytes } = await import('firebase/firestore')
     const id = record.id || crypto.randomUUID()
-    const meta = { ...record, blob: undefined, id }
-    await setDoc(doc(db, 'users', uid, 'invoices', id), {
-      number: meta.number,
-      numberLower: meta.number.toLowerCase(),
-      type: meta.type,
-      client: meta.client || null,
-      clientName: meta.client?.name || '',
-      date: meta.date,
-      dueDate: meta.dueDate,
-      total: meta.total,
-      costTotal: meta.costTotal || 0,
-      status: meta.status || 'active',
-      paymentMethod: meta.paymentMethod || '',
-      paymentDetail: meta.paymentDetail || '',
-      bankName: meta.bankName || '',
-      createdAt: meta.createdAt,
-      blob: record.blob ? Bytes.fromUint8Array(record.blob) : null,
-    })
-    return meta
+    const { blob: _blob, ...meta } = record
+    const clean = {}
+    for (const key in meta) {
+      if (meta[key] !== undefined) clean[key] = meta[key]
+    }
+    clean.id = id
+    clean.numberLower = String(meta.number || '').toLowerCase()
+    clean.blob = record.blob ? Bytes.fromUint8Array(record.blob) : null
+    await setDoc(doc(db, 'users', uid, 'invoices', id), clean)
+    return { ...meta, id }
   },
   async queryInvoices(filters = {}) {
     const uid = await fbCurrentUid()

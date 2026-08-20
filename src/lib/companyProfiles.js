@@ -58,6 +58,31 @@ export async function resolveCompanyProfile(type) {
   }
 }
 
+export function toGrayscaleDataUrl(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      for (let i = 0; i < data.length; i += 4) {
+        const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+        data[i] = g
+        data[i + 1] = g
+        data[i + 2] = g
+      }
+      ctx.putImageData(new ImageData(data, canvas.width, canvas.height), 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => reject(new Error('Could not convert the logo to grayscale'))
+    img.src = src
+  })
+}
+
 export function analyzeLogo(dataUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image()

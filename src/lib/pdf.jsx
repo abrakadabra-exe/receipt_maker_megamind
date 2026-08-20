@@ -43,116 +43,151 @@ const PURPLE = '#4C1489'
 const GRAY = '#6b7280'
 const LINE = '#e5e0f0'
 
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: 'Inter',
-    fontSize: 9,
-    color: '#1f2430',
-    padding: 36,
-    paddingBottom: 78,
-  },
-  headerBand: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: PURPLE,
-    borderRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  logoChip: { backgroundColor: '#ffffff', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 6 },
-  logo: { width: 104 },
-  bandRight: { alignItems: 'flex-end' },
-  bandTitle: { color: '#ffffff', fontSize: 17, fontWeight: 700, letterSpacing: 2 },
-  bandContact: { color: '#e6d9ff', fontSize: 6.8, marginTop: 4 },
-  invoiceTitle: { fontSize: 21, fontWeight: 700, color: NAVY, textAlign: 'right', letterSpacing: 1 },
-  typeBadge: {
-    alignSelf: 'flex-end',
-    backgroundColor: ORANGE,
-    color: '#fff',
-    fontSize: 7,
-    fontWeight: 700,
-    letterSpacing: 1.2,
-    paddingVertical: 2.5,
-    paddingHorizontal: 7,
-    borderRadius: 2,
-    marginTop: 3,
-  },
-  metaBox: { marginTop: 8, alignSelf: 'flex-end' },
-  metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2 },
-  metaLabel: { fontSize: 7.5, color: GRAY, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 10, textAlign: 'right', width: 62 },
-  metaValue: { fontSize: 8.5, color: NAVY, fontWeight: 600, width: 110, textAlign: 'right' },
-  goldRule: { height: 2.2, backgroundColor: ORANGE, marginTop: 14 },
-  navyRule: { height: 0.6, backgroundColor: NAVY, opacity: 0.25, marginTop: 1.5 },
-  billedTo: { marginTop: 16 },
-  sectionLabel: { fontSize: 7.5, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 },
-  clientName: { fontSize: 10.5, fontWeight: 700, color: NAVY },
-  clientSub: { fontSize: 8.5, color: GRAY, marginTop: 1.5 },
-  table: { marginTop: 14, borderWidth: 0.75, borderColor: LINE, borderRadius: 3, overflow: 'hidden' },
-  tableHead: { flexDirection: 'row', backgroundColor: NAVY, paddingVertical: 6.5, paddingHorizontal: 8 },
-  headCell: { color: '#ffffff', fontSize: 6.8, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase' },
-  row: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: LINE },
-  rowAlt: { backgroundColor: NAVY_LIGHT },
-  cell: { fontSize: 8.3 },
-  cellBold: { fontSize: 8.3, fontWeight: 600 },
-  cellRight: { textAlign: 'right' },
-  cellCenter: { textAlign: 'center' },
-  warranty: { fontSize: 7, color: ORANGE_DARK, fontWeight: 600, marginTop: 1.5 },
-  workDone: {
-    marginTop: 10,
-    borderLeftWidth: 2.5,
-    borderLeftColor: ORANGE,
-    backgroundColor: NAVY_LIGHT,
-    padding: 8,
-    borderRadius: 2,
-  },
-  workLabel: { fontSize: 7.5, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
-  workText: { fontSize: 8.3, color: '#333a48', lineHeight: 1.45 },
-  totalsWrap: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end' },
-  totalsBox: { width: 248 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
-  totalRowText: { fontSize: 8.5, color: '#4b5563' },
-  totalRowValue: { fontSize: 8.5, fontWeight: 600, color: NAVY },
-  grandRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: NAVY, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 3, marginTop: 5 },
-  grandLabel: { color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 0.6 },
-  grandValue: { color: '#fff', fontSize: 10.5, fontWeight: 700 },
-  words: { marginTop: 6, fontSize: 7.8, fontStyle: 'italic', color: '#4b5563' },
-  bottomBlock: { marginTop: 16, flexDirection: 'row', gap: 14 },
-  infoCol: { flex: 1, borderWidth: 0.75, borderColor: LINE, borderRadius: 3, padding: 8 },
-  infoLabel: { fontSize: 7, color: ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
-  infoText: { fontSize: 8.3, color: '#333a48', lineHeight: 1.4 },
-  footer: {
-    position: 'absolute',
-    bottom: 28,
-    left: 36,
-    right: 36,
-    borderTopWidth: 1.6,
-    borderTopColor: ORANGE,
-    paddingTop: 8,
-    alignItems: 'center',
-  },
-  footerThanks: { fontSize: 7.6, fontStyle: 'italic', color: GRAY, marginTop: 2 },
-  footerPage: { fontSize: 7, color: GRAY, marginTop: 2 },
-  cancelledStamp: {
-    position: 'absolute',
-    top: 300,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    transform: 'rotate(-30deg)',
-  },
-  cancelledText: {
-    fontSize: 40,
-    fontWeight: 700,
-    color: 'rgba(220, 38, 38, 0.6)',
-    letterSpacing: 6,
-    borderWidth: 3.5,
-    borderColor: 'rgba(220, 38, 38, 0.6)',
-    borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 22,
-  },
-})
+function makeStyles(bw) {
+  const C = bw
+    ? {
+        PURPLE: '#111111',
+        ORANGE: '#111111',
+        ORANGE_DARK: '#111111',
+        NAVY: '#111111',
+        NAVY_LIGHT: '#f2f2f2',
+        GRAY: '#555555',
+        LINE: '#cccccc',
+        pageText: '#111111',
+        workText: '#111111',
+        totalText: '#111111',
+        bandContact: '#d9d9d9',
+        badgeBg: '#ffffff',
+        badgeText: '#111111',
+        cancel: 'rgba(17, 17, 17, 0.6)',
+      }
+    : {
+        PURPLE,
+        ORANGE,
+        ORANGE_DARK,
+        NAVY,
+        NAVY_LIGHT,
+        GRAY,
+        LINE,
+        pageText: '#1f2430',
+        workText: '#333a48',
+        totalText: '#4b5563',
+        bandContact: '#e6d9ff',
+        badgeBg: ORANGE,
+        badgeText: '#ffffff',
+        cancel: 'rgba(220, 38, 38, 0.6)',
+      }
+  return StyleSheet.create({
+    page: {
+      fontFamily: 'Inter',
+      fontSize: 9,
+      color: C.pageText,
+      padding: 36,
+      paddingBottom: 78,
+    },
+    headerBand: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: C.PURPLE,
+      borderRadius: 4,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    logoChip: { backgroundColor: '#ffffff', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 6 },
+    logo: { width: 104 },
+    bandRight: { alignItems: 'flex-end' },
+    bandTitle: { color: '#ffffff', fontSize: 17, fontWeight: 700, letterSpacing: 2 },
+    bandContact: { color: C.bandContact, fontSize: 6.8, marginTop: 4 },
+    invoiceTitle: { fontSize: 21, fontWeight: 700, color: C.NAVY, textAlign: 'right', letterSpacing: 1 },
+    typeBadge: {
+      alignSelf: 'flex-end',
+      backgroundColor: C.badgeBg,
+      color: C.badgeText,
+      fontSize: 7,
+      fontWeight: 700,
+      letterSpacing: 1.2,
+      paddingVertical: 2.5,
+      paddingHorizontal: 7,
+      borderRadius: 2,
+      marginTop: 3,
+    },
+    metaBox: { marginTop: 8, alignSelf: 'flex-end' },
+    metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2 },
+    metaLabel: { fontSize: 7.5, color: C.GRAY, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 10, textAlign: 'right', width: 62 },
+    metaValue: { fontSize: 8.5, color: C.NAVY, fontWeight: 600, width: 110, textAlign: 'right' },
+    goldRule: { height: 2.2, backgroundColor: C.ORANGE, marginTop: 14 },
+    navyRule: { height: 0.6, backgroundColor: C.NAVY, opacity: 0.25, marginTop: 1.5 },
+    billedTo: { marginTop: 16 },
+    sectionLabel: { fontSize: 7.5, color: C.ORANGE_DARK, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 },
+    clientName: { fontSize: 10.5, fontWeight: 700, color: C.NAVY },
+    clientSub: { fontSize: 8.5, color: C.GRAY, marginTop: 1.5 },
+    table: { marginTop: 14, borderWidth: 0.75, borderColor: C.LINE, borderRadius: 3, overflow: 'hidden' },
+    tableHead: { flexDirection: 'row', backgroundColor: C.NAVY, paddingVertical: 6.5, paddingHorizontal: 8 },
+    headCell: { color: '#ffffff', fontSize: 6.8, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase' },
+    row: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: C.LINE },
+    rowAlt: { backgroundColor: C.NAVY_LIGHT },
+    cell: { fontSize: 8.3 },
+    cellBold: { fontSize: 8.3, fontWeight: 600 },
+    cellRight: { textAlign: 'right' },
+    cellCenter: { textAlign: 'center' },
+    warranty: { fontSize: 7, color: C.ORANGE_DARK, fontWeight: 600, marginTop: 1.5 },
+    workDone: {
+      marginTop: 10,
+      borderLeftWidth: 2.5,
+      borderLeftColor: C.ORANGE,
+      backgroundColor: C.NAVY_LIGHT,
+      padding: 8,
+      borderRadius: 2,
+    },
+    workLabel: { fontSize: 7.5, color: C.ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
+    workText: { fontSize: 8.3, color: C.workText, lineHeight: 1.45 },
+    totalsWrap: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end' },
+    totalsBox: { width: 248 },
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+    totalRowText: { fontSize: 8.5, color: C.totalText },
+    totalRowValue: { fontSize: 8.5, fontWeight: 600, color: C.NAVY },
+    grandRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: C.NAVY, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 3, marginTop: 5 },
+    grandLabel: { color: '#ffffff', fontSize: 9, fontWeight: 700, letterSpacing: 0.6 },
+    grandValue: { color: '#ffffff', fontSize: 10.5, fontWeight: 700 },
+    words: { marginTop: 6, fontSize: 7.8, fontStyle: 'italic', color: C.totalText },
+    bottomBlock: { marginTop: 16, flexDirection: 'row', gap: 14 },
+    infoCol: { flex: 1, borderWidth: 0.75, borderColor: C.LINE, borderRadius: 3, padding: 8 },
+    infoLabel: { fontSize: 7, color: C.ORANGE_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
+    infoText: { fontSize: 8.3, color: C.workText, lineHeight: 1.4 },
+    footer: {
+      position: 'absolute',
+      bottom: 28,
+      left: 36,
+      right: 36,
+      borderTopWidth: 1.6,
+      borderTopColor: C.ORANGE,
+      paddingTop: 8,
+      alignItems: 'center',
+    },
+    footerThanks: { fontSize: 7.6, fontStyle: 'italic', color: C.GRAY, marginTop: 2 },
+    footerPage: { fontSize: 7, color: C.GRAY, marginTop: 2 },
+    cancelledStamp: {
+      position: 'absolute',
+      top: 300,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      transform: 'rotate(-30deg)',
+    },
+    cancelledText: {
+      fontSize: 40,
+      fontWeight: 700,
+      color: C.cancel,
+      letterSpacing: 6,
+      borderWidth: 3.5,
+      borderColor: C.cancel,
+      borderRadius: 8,
+      paddingVertical: 4,
+      paddingHorizontal: 22,
+    },
+  })
+}
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -198,7 +233,7 @@ function cellValue(item, key) {
   }
 }
 
-function InvoiceTable({ invoice }) {
+function InvoiceTable({ invoice, styles }) {
   const cols = COLUMNS[invoice.type]
   return (
     <View style={styles.table}>
@@ -230,7 +265,8 @@ function InvoiceTable({ invoice }) {
   )
 }
 
-function InvoiceDoc({ invoice, profile }) {
+function InvoiceDoc({ invoice, profile, bw = false }) {
+  const styles = makeStyles(bw)
   const meta = typeMeta(invoice.type)
   const p = profile || {
     logoSrc: logoUrl,
@@ -299,7 +335,7 @@ function InvoiceDoc({ invoice, profile }) {
           </View>
         )}
 
-        <InvoiceTable invoice={invoice} />
+        <InvoiceTable invoice={invoice} styles={styles} />
 
         <View style={styles.totalsWrap}>
           <View style={styles.totalsBox}>
