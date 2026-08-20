@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { backend } from '../lib/store'
-import { decryptToBlob, openBlob, downloadBlob, buildPdfBlob } from '../lib/invoiceCrypto'
+import { decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
 import { bdt } from '../lib/money'
 import { TYPES } from '../lib/numbers'
 import { Btn, Field, inputCls, Card, Badge, SectionTitle, ErrorBox } from '../components/ui'
@@ -70,24 +70,6 @@ export default function Search() {
       if (!rec) throw new Error('Invoice not found')
       const blob = await decryptToBlob(rec.blob)
       downloadBlob(blob, `${rec.meta.number}.pdf`)
-    } catch (err) {
-      setError(err.message || 'Could not download invoice')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function downloadBw(id) {
-    setBusyId(id)
-    setError('')
-    try {
-      const rec = await backend.getInvoice(id)
-      if (!rec) throw new Error('Invoice not found')
-      if (!Array.isArray(rec.meta.items)) {
-        throw new Error('This older invoice cannot be regenerated in B&W — please download the color PDF instead.')
-      }
-      const blob = await buildPdfBlob(rec.meta, { bw: true })
-      downloadBlob(blob, `${rec.meta.number}-bw.pdf`)
     } catch (err) {
       setError(err.message || 'Could not download invoice')
     } finally {
@@ -202,9 +184,6 @@ export default function Search() {
                 </Btn>
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => download(r.id)}>
                   PDF
-                </Btn>
-                <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => downloadBw(r.id)}>
-                  PDF B&amp;W
                 </Btn>
                 {r.status !== 'cancelled' && (
                   <Btn variant="outline" className="!px-3 !py-2 text-sm text-red-600" disabled={busyId === r.id} onClick={() => cancel(r.id)}>

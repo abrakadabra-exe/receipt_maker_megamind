@@ -35,48 +35,24 @@ export const COMPANY = {
   email: 'megamindbd.official@gmail.com',
 }
 
-const NAVY = '#1b2a4a'
-const NAVY_LIGHT = '#f2f5fa'
-const ORANGE = '#fa6401'
-const ORANGE_DARK = '#c2410c'
-const PURPLE = '#4C1489'
-const GRAY = '#6b7280'
-const LINE = '#e5e0f0'
+const C = {
+  PURPLE: '#111111',
+  ORANGE: '#111111',
+  ORANGE_DARK: '#111111',
+  NAVY: '#111111',
+  NAVY_LIGHT: '#f2f2f2',
+  GRAY: '#555555',
+  LINE: '#cccccc',
+  pageText: '#111111',
+  workText: '#111111',
+  totalText: '#111111',
+  bandContact: '#d9d9d9',
+  badgeBg: '#ffffff',
+  badgeText: '#111111',
+  cancel: 'rgba(17, 17, 17, 0.6)',
+}
 
-function makeStyles(bw) {
-  const C = bw
-    ? {
-        PURPLE: '#111111',
-        ORANGE: '#111111',
-        ORANGE_DARK: '#111111',
-        NAVY: '#111111',
-        NAVY_LIGHT: '#f2f2f2',
-        GRAY: '#555555',
-        LINE: '#cccccc',
-        pageText: '#111111',
-        workText: '#111111',
-        totalText: '#111111',
-        bandContact: '#d9d9d9',
-        badgeBg: '#ffffff',
-        badgeText: '#111111',
-        cancel: 'rgba(17, 17, 17, 0.6)',
-      }
-    : {
-        PURPLE,
-        ORANGE,
-        ORANGE_DARK,
-        NAVY,
-        NAVY_LIGHT,
-        GRAY,
-        LINE,
-        pageText: '#1f2430',
-        workText: '#333a48',
-        totalText: '#4b5563',
-        bandContact: '#e6d9ff',
-        badgeBg: ORANGE,
-        badgeText: '#ffffff',
-        cancel: 'rgba(220, 38, 38, 0.6)',
-      }
+function makeStyles() {
   return StyleSheet.create({
     page: {
       fontFamily: 'Inter',
@@ -265,8 +241,8 @@ function InvoiceTable({ invoice, styles }) {
   )
 }
 
-function InvoiceDoc({ invoice, profile, bw = false }) {
-  const styles = makeStyles(bw)
+function InvoiceDoc({ invoice, profile }) {
+  const styles = makeStyles()
   const meta = typeMeta(invoice.type)
   const p = profile || {
     logoSrc: logoUrl,

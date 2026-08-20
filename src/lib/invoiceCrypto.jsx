@@ -15,9 +15,9 @@ export async function getCryptoKey() {
   return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt'])
 }
 
-export async function buildEncryptedBlob(record, opts = {}) {
+export async function buildEncryptedBlob(record) {
   const key = await getCryptoKey()
-  const blob = await renderInvoicePdf(record, opts)
+  const blob = await renderInvoicePdf(record)
   const raw = new Uint8Array(await blob.arrayBuffer())
   const compressed = compressBytes(raw)
   const { iv, data } = await encryptBytes(key, compressed)
@@ -27,20 +27,19 @@ export async function buildEncryptedBlob(record, opts = {}) {
   return out
 }
 
-async function renderInvoicePdf(record, opts = {}) {
+async function renderInvoicePdf(record) {
   const { pdf } = await import('@react-pdf/renderer')
   const { default: InvoiceDoc } = await import('./pdf.jsx')
   const { resolveCompanyProfile, toGrayscaleDataUrl } = await import('./companyProfiles')
-  const bw = !!opts.bw
   const profile = await resolveCompanyProfile(record.type)
-  if (bw && profile.logoSrc && !profile.logoOnDark) {
+  if (profile.logoSrc && !profile.logoOnDark) {
     profile.logoSrc = await toGrayscaleDataUrl(profile.logoSrc)
   }
-  return pdf(<InvoiceDoc invoice={record} profile={profile} bw={bw} />).toBlob()
+  return pdf(<InvoiceDoc invoice={record} profile={profile} />).toBlob()
 }
 
-export async function buildPdfBlob(record, opts = {}) {
-  return renderInvoicePdf(record, opts)
+export async function buildPdfBlob(record) {
+  return renderInvoicePdf(record)
 }
 
 export async function decryptToBlob(encrypted) {
