@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { backend } from '../lib/store'
 import { setMasterKey } from '../lib/session'
 import { Btn, Field, inputCls, ErrorBox } from '../components/ui'
-import logoUrl from '../assets/megamind-logo.png'
+import logoUrl from '../assets/megamind-logo-white.png'
 
 function RecoveryScreen({ phrase, onDone }) {
   const [copied, setCopied] = useState(false)
@@ -107,7 +107,7 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
   return (
     <div className="mx-auto mt-10 w-full max-w-md px-4">
       <div className="mb-6 text-center">
-        <div className="mx-auto flex w-fit items-center rounded-2xl bg-white p-2 shadow-md ring-1 ring-purple-100">
+        <div className="mx-auto flex w-fit items-center rounded-2xl bg-purple-700 p-2 shadow-md">
           <img src={logoUrl} alt="Megamind BD" className="h-10 w-auto sm:h-12" />
         </div>
         <p className="mt-1 text-sm text-navy-500">

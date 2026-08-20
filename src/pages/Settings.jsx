@@ -4,6 +4,8 @@ import { backend, isDemoMode } from '../lib/store'
 import { bytesToBase64 } from '../lib/crypto'
 import { decryptToBlob, downloadBlob } from '../lib/invoiceCrypto'
 import { getLockMinutes, setLockMinutes } from '../lib/lockMinutes'
+import { DEFAULT_PROFILES, getCompanyProfiles, saveCompanyProfile, analyzeLogo } from '../lib/companyProfiles'
+import { TYPES } from '../lib/numbers'
 import { Btn, Field, inputCls, Card, SectionTitle, ErrorBox } from '../components/ui'
 
 export default function Settings({ user }) {
@@ -21,11 +23,69 @@ export default function Settings({ user }) {
   const [username, setUsername] = useState('')
   const [nameMsg, setNameMsg] = useState('')
   const [savingName, setSavingName] = useState(false)
+  const [profiles, setProfiles] = useState({})
+  const [profileBusy, setProfileBusy] = useState({})
+  const [profileMsgs, setProfileMsgs] = useState({})
   const fileRef = useRef(null)
+  const logoRefs = useRef({})
 
   useEffect(() => {
     backend.getUsername().then(setUsername).catch(() => {})
+    getCompanyProfiles().then(setProfiles).catch(() => {})
   }, [])
+
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(r.result)
+      r.onerror = () => reject(new Error('Could not read that file'))
+      r.readAsDataURL(file)
+    })
+  }
+
+  function setProfileField(type, field, value) {
+    setProfiles((p) => ({ ...p, [type]: { ...(p[type] || {}), [field]: value } }))
+  }
+
+  function resetProfile(type) {
+    setProfiles((p) => {
+      const next = { ...p }
+      delete next[type]
+      return next
+    })
+  }
+
+  async function handleLogoUpload(type, file) {
+    if (!file) return
+    try {
+      const dataUrl = await readAsDataUrl(file)
+      const analyzed = await analyzeLogo(dataUrl)
+      setProfileField(type, 'logo', analyzed.dataUrl)
+      setProfileField(type, 'logoOnDark', analyzed.logoOnDark)
+      setProfileMsgs((m) => ({ ...m, [type]: '' }))
+    } catch (err) {
+      setProfileMsgs((m) => ({ ...m, [type]: err.message || 'Could not read image' }))
+    }
+  }
+
+  async function saveProfile(type) {
+    setProfileBusy((b) => ({ ...b, [type]: true }))
+    setProfileMsgs((m) => ({ ...m, [type]: '' }))
+    try {
+      const data = profiles[type] || {}
+      await saveCompanyProfile(type, {
+        phone: (data.phone || '').trim(),
+        email: (data.email || '').trim(),
+        logo: data.logo || '',
+        logoOnDark: !!data.logoOnDark,
+      })
+      setProfileMsgs((m) => ({ ...m, [type]: 'Saved.' }))
+    } catch (err) {
+      setProfileMsgs((m) => ({ ...m, [type]: err.message || 'Could not save' }))
+    } finally {
+      setProfileBusy((b) => ({ ...b, [type]: false }))
+    }
+  }
 
   async function saveUsername() {
     setSavingName(true)
@@ -214,6 +274,79 @@ export default function Settings({ user }) {
           {lockMsg && (
             <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{lockMsg}</div>
           )}
+        </div>
+      </Card>
+
+      <Card className="mt-5">
+        <h3 className="text-xs font-bold tracking-wide text-navy-700 uppercase">Invoice company profiles</h3>
+        <p className="mt-1 text-xs text-navy-500">
+          Set the logo and contact details shown on PDF invoices for each category. The contact line appears under the
+          INVOICE title on the first page.
+        </p>
+        <div className="mt-4 space-y-4">
+          {TYPES.map((t) => {
+            const p = { ...DEFAULT_PROFILES[t.id], ...(profiles[t.id] || {}) }
+            const busy = profileBusy[t.id]
+            const m = profileMsgs[t.id]
+            return (
+              <div key={t.id} className="rounded-lg border border-navy-100 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold text-navy-900">{t.label}</h4>
+                  <button type="button" onClick={() => resetProfile(t.id)} className="text-xs font-medium text-orange-600 hover:underline">
+                    Reset to default
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-navy-100">
+                    {p.logo ? (
+                      <img src={p.logo} alt={`${t.label} logo`} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <span className="px-1 text-center text-[10px] text-navy-400">Default logo</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Btn variant="outline" onClick={() => logoRefs.current[t.id]?.click()} disabled={!!busy}>
+                      Choose logo
+                    </Btn>
+                    <input
+                      ref={(el) => (logoRefs.current[t.id] = el)}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        handleLogoUpload(t.id, e.target.files?.[0])
+                        e.target.value = ''
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field label="Phone">
+                    <input
+                      className={inputCls}
+                      value={p.phone}
+                      onChange={(e) => setProfileField(t.id, 'phone', e.target.value)}
+                      placeholder="+880..."
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <input
+                      className={inputCls}
+                      value={p.email}
+                      onChange={(e) => setProfileField(t.id, 'email', e.target.value)}
+                      placeholder="name@example.com"
+                    />
+                  </Field>
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <Btn onClick={() => saveProfile(t.id)} disabled={!!busy} className="!px-4 !py-2">
+                    {busy ? 'Saving…' : 'Save profile'}
+                  </Btn>
+                  {m && <span className="text-xs text-emerald-700">{m}</span>}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
 

@@ -281,6 +281,19 @@ const demo = {
     localStorage.setItem(`${DEMO_PREFIX}${email}_name`, clean)
     return clean
   },
+  async getCompanyProfiles() {
+    const email = this.getCurrentUser()?.email
+    if (!email) return {}
+    const raw = localStorage.getItem(`${DEMO_PREFIX}${email}_company`)
+    return raw ? JSON.parse(raw) : {}
+  },
+  async saveCompanyProfile(type, data) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const current = await this.getCompanyProfiles()
+    current[type] = data
+    localStorage.setItem(`${DEMO_PREFIX}${email}_company`, JSON.stringify(current))
+  },
 }
 
 /* ---------------- Firebase backend ---------------- */
@@ -353,7 +366,7 @@ const fb = {
   async setProfile(uid, data) {
     const { db } = await getFirebase()
     const { doc, setDoc } = await import('firebase/firestore')
-    await setDoc(doc(db, 'users', uid), data)
+    await setDoc(doc(db, 'users', uid), data, { merge: true })
   },
   async saveInvoice(record) {
     const uid = await fbCurrentUid()
@@ -576,6 +589,22 @@ const fb = {
     if (clean.length > 40) throw new Error('Username must be 40 characters or fewer')
     await setDoc(doc(db, 'users', uid), { displayName: clean }, { merge: true })
     return clean
+  },
+  async getCompanyProfiles() {
+    const uid = await fbCurrentUid()
+    const profile = await this.getProfile(uid)
+    return profile?.companyProfiles || {}
+  },
+  async saveCompanyProfile(type, data) {
+    const uid = await fbCurrentUid()
+    const current = await this.getCompanyProfiles()
+    const { db } = await getFirebase()
+    const { doc, setDoc } = await import('firebase/firestore')
+    await setDoc(
+      doc(db, 'users', uid),
+      { companyProfiles: { ...current, [type]: data } },
+      { merge: true },
+    )
   },
 }
 

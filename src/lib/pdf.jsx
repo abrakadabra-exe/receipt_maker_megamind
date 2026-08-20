@@ -13,7 +13,7 @@ import InterMedium from '../assets/fonts/Inter-Medium.ttf'
 import InterSemiBold from '../assets/fonts/Inter-SemiBold.ttf'
 import InterBold from '../assets/fonts/Inter-Bold.ttf'
 import InterItalic from '../assets/fonts/Inter-Italic.ttf'
-import logoUrl from '../assets/megamind-logo.png'
+import logoUrl from '../assets/megamind-logo-white.png'
 import { bdt, amountInWords } from './money'
 import { typeMeta } from './numbers'
 
@@ -131,8 +131,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     alignItems: 'center',
   },
-  footerLabel: { fontSize: 7, color: GRAY, letterSpacing: 1.6, textTransform: 'uppercase' },
-  footerContact: { fontSize: 8.6, color: NAVY, fontWeight: 600, marginTop: 2 },
   footerThanks: { fontSize: 7.6, fontStyle: 'italic', color: GRAY, marginTop: 2 },
   footerPage: { fontSize: 7, color: GRAY, marginTop: 2 },
   cancelledStamp: {
@@ -232,8 +230,15 @@ function InvoiceTable({ invoice }) {
   )
 }
 
-function InvoiceDoc({ invoice }) {
+function InvoiceDoc({ invoice, profile }) {
   const meta = typeMeta(invoice.type)
+  const p = profile || {
+    logoSrc: logoUrl,
+    logoOnDark: true,
+    phone: COMPANY.phone,
+    email: COMPANY.email,
+  }
+  const bandContact = [p.phone, p.email].filter(Boolean).join('  ·  ')
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -243,15 +248,17 @@ function InvoiceDoc({ invoice }) {
           </View>
         )}
         <View style={styles.headerBand}>
-          <View style={styles.logoChip}>
-            <Image src={logoUrl} style={styles.logo} />
-          </View>
+          {p.logoOnDark ? (
+            <Image src={p.logoSrc} style={styles.logo} />
+          ) : (
+            <View style={styles.logoChip}>
+              <Image src={p.logoSrc} style={styles.logo} />
+            </View>
+          )}
           <View style={styles.bandRight}>
             <Text style={styles.bandTitle}>INVOICE</Text>
             <View style={styles.typeBadge}><Text>{meta.label.toUpperCase()}</Text></View>
-            <Text style={styles.bandContact}>
-              {COMPANY.phone}  ·  {COMPANY.email}
-            </Text>
+            <Text style={styles.bandContact}>{bandContact}</Text>
           </View>
         </View>
         <View style={styles.metaBox}>
@@ -330,8 +337,6 @@ function InvoiceDoc({ invoice }) {
         </View>
 
         <View style={styles.footer} fixed>
-          <Text style={styles.footerLabel}>For Any Queries Contact</Text>
-          <Text style={styles.footerContact}>{COMPANY.phone}  ·  {COMPANY.email}</Text>
           <Text style={styles.footerThanks}>Thank you for your business.</Text>
           <Text style={styles.footerPage} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>

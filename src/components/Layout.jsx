@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import logoUrl from '../assets/megamind-logo.png'
+import logoUrl from '../assets/megamind-logo-white.png'
 
 const invoiceTypes = [
   { to: '/new/service', label: 'Service' },
@@ -47,9 +47,7 @@ export default function Layout({ onLogout, children }) {
       <header className="sticky top-0 z-30 bg-orange-500 shadow-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
           <NavLink to="/" className="flex min-w-0 items-center" aria-label="Megamind BD home">
-            <span className="flex max-w-[150px] items-center rounded-lg bg-white px-1.5 py-1 shadow-sm sm:max-w-none">
-              <img src={logoUrl} alt="Megamind BD" className="h-6 w-auto sm:h-7" />
-            </span>
+            <img src={logoUrl} alt="Megamind BD" className="h-6 w-auto sm:h-7" />
           </NavLink>
 
           <nav className="ml-auto hidden items-center gap-1 md:flex">
