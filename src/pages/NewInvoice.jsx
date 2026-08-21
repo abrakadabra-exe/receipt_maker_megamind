@@ -282,7 +282,14 @@ export default function NewInvoice() {
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Btn variant="gold" onClick={viewSaved}>View PDF</Btn>
             <Btn variant="outline" onClick={downloadSaved}>Download</Btn>
-            <Btn variant="ghost" onClick={() => { setSaved(null); setItems([newItem(type)]) }}>New invoice</Btn>
+            <Btn variant="ghost" onClick={() => {
+              setSaved(null)
+              setItems([newItem(type)])
+              setDate(today())
+              setDateTouched(false)
+              setDueDate(today())
+              setDueDateTouched(false)
+            }}>New invoice</Btn>
             <Btn variant="ghost" onClick={() => navigate('/')}>Dashboard</Btn>
           </div>
         </Card>
