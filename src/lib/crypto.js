@@ -1,4 +1,5 @@
 import { deflate, inflate } from 'pako'
+import { getMasterKey } from './session'
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -45,6 +46,12 @@ export function randomBytes(n) {
   return crypto.getRandomValues(new Uint8Array(n))
 }
 
+export async function getCryptoKey() {
+  const raw = getMasterKey()
+  if (!raw) throw new Error('Session locked. Please sign in again.')
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt'])
+}
+
 export async function encryptBytes(key, plaintext) {
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext)
@@ -70,4 +77,17 @@ export function decompressBytes(bytes) {
 
 export function bytesToText(bytes) {
   return decoder.decode(bytes)
+}
+
+export async function encryptJson(key, obj) {
+  const json = JSON.stringify(obj)
+  const bytes = encoder.encode(json)
+  const compressed = compressBytes(bytes)
+  return encryptBytes(key, compressed)
+}
+
+export async function decryptJson(key, ivB64, ciphertext) {
+  const bytes = await decryptBytes(key, ivB64, ciphertext)
+  const decompressed = decompressBytes(bytes)
+  return JSON.parse(decoder.decode(decompressed))
 }

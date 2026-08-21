@@ -105,7 +105,7 @@ export default function Settings({ user }) {
     e.preventDefault()
     setError('')
     setMsg('')
-    if (newPassword.length < 6) { setError('New password must be at least 6 characters'); return }
+    if (newPassword.length < 8) { setError('New password must be at least 8 characters'); return }
     if (newPassword !== confirm) { setError('New passwords do not match'); return }
     setBusy(true)
     try {

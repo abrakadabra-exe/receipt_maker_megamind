@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { generateNumber, typeMeta } from '../lib/numbers'
 import { buildEncryptedBlob, buildPdfBlob, decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
@@ -64,6 +64,7 @@ const TYPE_COLUMNS = {
 export default function NewInvoice() {
   const { type } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const meta = typeMeta(type)
 
   const [client, setClient] = useState({ name: '', phone: '', address: '' })
@@ -87,8 +88,21 @@ export default function NewInvoice() {
   useEffect(() => {
     setSaved(null)
     setPreviewState(null)
-    setError('')
   }, [type])
+
+  useEffect(() => {
+    const clone = location.state?.clone
+    if (!clone) return
+    if (clone.client) setClient(clone.client)
+    if (clone.paymentMethod) setPaymentMethod(clone.paymentMethod)
+    if (clone.paymentDetail) setPaymentDetail(clone.paymentDetail)
+    if (clone.bankName) setBankName(clone.bankName)
+    if (clone.notes) setNotes(clone.notes)
+    if (clone.repair) setRepair(clone.repair)
+    if (clone.items?.length) setItems(clone.items.map((it) => ({ ...it })))
+    if (clone.discount) setDiscount(clone.discount)
+    window.history.replaceState({}, '')
+  }, [])
 
   useEffect(() => {
     backend
@@ -200,6 +214,7 @@ export default function NewInvoice() {
         total: itemTotal(it),
       })),
       status: 'active',
+      paymentStatus: 'unpaid',
       createdAt: Date.now(),
     }
   }

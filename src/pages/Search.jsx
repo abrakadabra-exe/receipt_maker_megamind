@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { decryptToBlob, openBlob, downloadBlob } from '../lib/invoiceCrypto'
 import { bdt } from '../lib/money'
@@ -6,6 +7,8 @@ import { TYPES } from '../lib/numbers'
 import { Btn, Field, inputCls, Card, Badge, SectionTitle, ErrorBox } from '../components/ui'
 
 export default function Search() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [number, setNumber] = useState('')
   const [type, setType] = useState('')
   const [client, setClient] = useState('')
@@ -15,6 +18,15 @@ export default function Search() {
   const [loaded, setLoaded] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
+  const [payInvoice, setPayInvoice] = useState(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState('Cash')
+  const [payDetail, setPayDetail] = useState('')
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [cnInvoice, setCnInvoice] = useState(null)
+  const [cnAmount, setCnAmount] = useState('')
+  const [cnReason, setCnReason] = useState('')
+  const [cnDate, setCnDate] = useState(new Date().toISOString().slice(0, 10))
 
   async function run(filters = {}) {
     setError('')
@@ -35,7 +47,10 @@ export default function Search() {
   }
 
   useEffect(() => {
-    run({ number: '', type: '', client: '', from: '', to: '' })
+    const clientFilter = location.state?.client || ''
+    if (clientFilter) setClient(clientFilter)
+    run({ number: '', type: '', client: clientFilter, from: '', to: '' })
+    window.history.replaceState({}, '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -96,6 +111,38 @@ export default function Search() {
       setRows((p) => p.map((r) => (r.id === id ? { ...r, status: 'cancelled' } : r)))
     } catch (err) {
       setError(err.message || 'Could not cancel invoice')
+    }
+  }
+
+  async function recordPayment() {
+    if (!payInvoice) return
+    const amt = Number(payAmount)
+    if (!amt || amt <= 0) { setError('Enter a valid amount'); return }
+    setError('')
+    try {
+      const status = await backend.addPayment(payInvoice.id, { amount: amt, method: payMethod, detail: payDetail, date: payDate })
+      setRows((p) => p.map((r) => (r.id === payInvoice.id ? { ...r, paymentStatus: status } : r)))
+      setPayInvoice(null)
+      setPayAmount('')
+      setPayDetail('')
+    } catch (err) {
+      setError(err.message || 'Could not record payment')
+    }
+  }
+
+  async function issueCreditNote() {
+    if (!cnInvoice) return
+    const amt = Number(cnAmount)
+    if (!amt || amt <= 0) { setError('Enter a valid credit amount'); return }
+    if (!cnReason.trim()) { setError('Enter a reason for the credit note'); return }
+    setError('')
+    try {
+      await backend.issueCreditNote(cnInvoice.id, { amount: amt, reason: cnReason.trim(), date: cnDate })
+      setCnInvoice(null)
+      setCnAmount('')
+      setCnReason('')
+    } catch (err) {
+      setError(err.message || 'Could not issue credit note')
     }
   }
 
@@ -160,6 +207,9 @@ export default function Search() {
                 <Badge color={r.type === 'service' ? 'navy' : r.type === 'product' ? 'orange' : 'green'}>
                   {TYPES.find((t) => t.id === r.type)?.label || r.type}
                 </Badge>
+                {r.paymentStatus === 'paid' && <Badge color="green">Paid</Badge>}
+                {r.paymentStatus === 'partial' && <Badge color="orange">Partial</Badge>}
+                {(!r.paymentStatus || r.paymentStatus === 'unpaid') && r.status !== 'cancelled' && <Badge color="red">Unpaid</Badge>}
               </div>
               <p className="mt-1 truncate text-sm text-navy-600">{r.client?.name || r.clientName || ''}</p>
               <p className="text-xs text-navy-400">
@@ -185,6 +235,36 @@ export default function Search() {
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" disabled={busyId === r.id} onClick={() => download(r.id)}>
                   PDF
                 </Btn>
+                {r.status !== 'cancelled' && r.paymentStatus !== 'paid' && (
+                  <Btn variant="gold" className="!px-3 !py-2 text-sm" onClick={() => {
+                    setPayInvoice(r)
+                    setPayAmount(String(Number(r.total) || 0))
+                    setPayDate(new Date().toISOString().slice(0, 10))
+                  }}>
+                    Record Payment
+                  </Btn>
+                )}
+                <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => {
+                  const clone = { ...r }
+                  delete clone.id
+                  delete clone.blob
+                  delete clone.status
+                  delete clone.paymentStatus
+                  delete clone.payments
+                  delete clone.createdAt
+                  navigate(`/new/${r.type}`, { state: { clone } })
+                }}>
+                  Duplicate
+                </Btn>
+                {r.status !== 'cancelled' && (
+                  <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => {
+                    setCnInvoice(r)
+                    setCnAmount(String(Number(r.total) || 0))
+                    setCnDate(new Date().toISOString().slice(0, 10))
+                  }}>
+                    Credit Note
+                  </Btn>
+                )}
                 {r.status !== 'cancelled' && (
                   <Btn variant="outline" className="!px-3 !py-2 text-sm text-red-600" disabled={busyId === r.id} onClick={() => cancel(r.id)}>
                     Cancel
@@ -198,6 +278,68 @@ export default function Search() {
           </Card>
         ))}
       </div>
+
+      {payInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPayInvoice(null)}>
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-navy-900">Record Payment</h3>
+            <p className="mt-1 text-sm text-navy-500">{payInvoice.number} — total {bdt(payInvoice.total)}</p>
+            <div className="mt-4 space-y-3">
+              <Field label="Amount (BDT)">
+                <input type="number" className={inputCls} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} min="0" step="0.01" />
+              </Field>
+              <Field label="Method">
+                <select className={inputCls} value={payMethod} onChange={(e) => setPayMethod(e.target.value)}>
+                  {['Cash', 'bKash', 'Nagad', 'Bank transfer'].map((m) => <option key={m}>{m}</option>)}
+                </select>
+              </Field>
+              {(payMethod === 'bKash' || payMethod === 'Nagad') && (
+                <Field label={`${payMethod} number`}>
+                  <input className={inputCls} value={payDetail} onChange={(e) => setPayDetail(e.target.value)} placeholder="e.g. 01XXXXXXXXX" />
+                </Field>
+              )}
+              {payMethod === 'Bank transfer' && (
+                <Field label="Account / reference">
+                  <input className={inputCls} value={payDetail} onChange={(e) => setPayDetail(e.target.value)} placeholder="Account or reference number" />
+                </Field>
+              )}
+              <Field label="Date">
+                <input type="date" className={inputCls} value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              </Field>
+            </div>
+            <ErrorBox>{error}</ErrorBox>
+            <div className="mt-4 flex gap-2">
+              <Btn variant="gold" className="flex-1" onClick={recordPayment}>Save Payment</Btn>
+              <Btn variant="outline" onClick={() => setPayInvoice(null)}>Cancel</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cnInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCnInvoice(null)}>
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-navy-900">Issue Credit Note</h3>
+            <p className="mt-1 text-sm text-navy-500">{cnInvoice.number} — total {bdt(cnInvoice.total)}</p>
+            <div className="mt-4 space-y-3">
+              <Field label="Credit amount (BDT)">
+                <input type="number" className={inputCls} value={cnAmount} onChange={(e) => setCnAmount(e.target.value)} min="0" step="0.01" />
+              </Field>
+              <Field label="Reason">
+                <input className={inputCls} value={cnReason} onChange={(e) => setCnReason(e.target.value)} placeholder="e.g. Item returned, overcharge corrected" />
+              </Field>
+              <Field label="Date">
+                <input type="date" className={inputCls} value={cnDate} onChange={(e) => setCnDate(e.target.value)} />
+              </Field>
+            </div>
+            <ErrorBox>{error}</ErrorBox>
+            <div className="mt-4 flex gap-2">
+              <Btn variant="gold" className="flex-1" onClick={issueCreditNote}>Issue Credit Note</Btn>
+              <Btn variant="outline" onClick={() => setCnInvoice(null)}>Cancel</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

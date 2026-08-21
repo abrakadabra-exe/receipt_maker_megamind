@@ -1,6 +1,7 @@
 import { firebaseConfigured, getFirebase } from '../firebase'
 import { setupUserKeys, unwrapMasterKey, rewrapMasterKey } from './keys'
-import { bytesToBase64, base64ToBytes } from './crypto'
+import { bytesToBase64, base64ToBytes, encryptJson, decryptJson, getCryptoKey } from './crypto'
+import { hasMasterKey } from './session'
 
 function encodePassword(password, saltB64) {
   return crypto.subtle.digest(
@@ -81,9 +82,10 @@ const demo = {
     demoSaveUsers(users)
     localStorage.setItem(`${DEMO_PREFIX}session`, email)
     const keys = await setupUserKeys(password)
-    localStorage.setItem(demoUserKey(email), JSON.stringify(keys))
+    const { masterKey, recovery, ...safe } = keys
+    localStorage.setItem(demoUserKey(email), JSON.stringify(safe))
     localStorage.setItem(demoInvoicesKey(email), '[]')
-    return { recovery: keys.recovery, masterKey: keys.masterKey }
+    return { recovery, masterKey }
   },
   async signIn(email, password) {
     const users = demoUsers()
@@ -96,7 +98,8 @@ const demo = {
     const stored = localStorage.getItem(demoUserKey(email))
     if (!stored) {
       const keys = await setupUserKeys(password)
-      localStorage.setItem(demoUserKey(email), JSON.stringify(keys))
+      const { masterKey: _mk, recovery: _rec, ...safe } = keys
+      localStorage.setItem(demoUserKey(email), JSON.stringify(safe))
       localStorage.setItem(demoInvoicesKey(email), '[]')
       return { recovery: keys.recovery, masterKey: null }
     }
@@ -120,17 +123,42 @@ const demo = {
     const email = this.getCurrentUser()?.email
     if (!email) throw new Error('Not signed in')
     const list = demoInvoices(email)
-    const meta = { ...record, blob: undefined }
-    meta.id = record.id || demoRandomId()
-    meta.status = record.status || 'active'
-    list.push({ ...meta, blobB64: bytesToBase64(record.blob) })
+    const { client, paymentDetail, bankName, ...rest } = record
+    const clean = { ...rest }
+    clean.id = record.id || demoRandomId()
+    clean.status = record.status || 'active'
+    if (hasMasterKey()) {
+      const key = await getCryptoKey()
+      const sensitive = { client, paymentDetail, bankName }
+      const enc = await encryptJson(key, sensitive)
+      clean.sensitiveEnc = { iv: enc.iv, data: bytesToBase64(enc.data) }
+    } else {
+      clean.client = client
+      clean.paymentDetail = paymentDetail
+      clean.bankName = bankName
+    }
+    list.push({ ...clean, blobB64: bytesToBase64(record.blob) })
     localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
-    return meta
+    return { client, paymentDetail, bankName, ...rest, id: clean.id, status: clean.status }
   },
-  queryInvoices(filters = {}) {
+  async queryInvoices(filters = {}) {
     const email = this.getCurrentUser()?.email
     if (!email) return []
-    let list = demoInvoices(email)
+    const raw = demoInvoices(email)
+    const cryptoKey = hasMasterKey() ? await getCryptoKey() : null
+    let list = []
+    for (const item of raw) {
+      const out = { ...item }
+      if (item.sensitiveEnc && cryptoKey) {
+        try {
+          const sensitive = await decryptJson(cryptoKey, item.sensitiveEnc.iv, base64ToBytes(item.sensitiveEnc.data))
+          out.client = sensitive.client
+          out.paymentDetail = sensitive.paymentDetail
+          out.bankName = sensitive.bankName
+        } catch { /* leave fields missing */ }
+      }
+      list.push(out)
+    }
     if (filters.type) list = list.filter((i) => i.type === filters.type)
     if (filters.number) {
       const q = filters.number.trim().toLowerCase()
@@ -143,7 +171,7 @@ const demo = {
       list = list.filter((i) => (i.client?.name || i.clientName || '').toLowerCase().includes(q))
     }
     return list
-      .map(({ blobB64: _blobB64, ...meta }) => meta)
+      .map(({ blobB64: _blobB64, sensitiveEnc: _se, ...meta }) => meta)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   },
   async getInvoice(id) {
@@ -151,7 +179,16 @@ const demo = {
     if (!email) return null
     const rec = demoInvoices(email).find((i) => i.id === id)
     if (!rec) return null
-    const { blobB64, ...meta } = rec
+    const { blobB64, sensitiveEnc, ...meta } = rec
+    if (sensitiveEnc && hasMasterKey()) {
+      try {
+        const key = await getCryptoKey()
+        const sensitive = await decryptJson(key, sensitiveEnc.iv, base64ToBytes(sensitiveEnc.data))
+        meta.client = sensitive.client
+        meta.paymentDetail = sensitive.paymentDetail
+        meta.bankName = sensitive.bankName
+      } catch { /* leave fields missing */ }
+    }
     return { meta, blob: base64ToBytes(blobB64) }
   },
   async deleteInvoice(id) {
@@ -168,32 +205,94 @@ const demo = {
     )
     localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
   },
+  async addPayment(invoiceId, payment) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const list = demoInvoices(email)
+    const inv = list.find((i) => i.id === invoiceId)
+    if (!inv) throw new Error('Invoice not found')
+    const existing = inv.payments || []
+    const totalPaid = existing.reduce((s, p) => s + (Number(p.amount) || 0), 0) + (Number(payment.amount) || 0)
+    const total = Number(inv.total) || 0
+    let paymentStatus = 'partial'
+    if (totalPaid <= 0) paymentStatus = 'unpaid'
+    else if (totalPaid >= total) paymentStatus = 'paid'
+    inv.payments = [...existing, { ...payment, date: payment.date || new Date().toISOString().slice(0, 10), createdAt: Date.now() }]
+    inv.paymentStatus = paymentStatus
+    localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
+    return paymentStatus
+  },
+  async getPayments(invoiceId) {
+    const email = this.getCurrentUser()?.email
+    if (!email) return []
+    const inv = demoInvoices(email).find((i) => i.id === invoiceId)
+    return inv?.payments || []
+  },
+  async issueCreditNote(invoiceId, creditNote) {
+    const email = this.getCurrentUser()?.email
+    if (!email) throw new Error('Not signed in')
+    const list = demoInvoices(email)
+    const inv = list.find((i) => i.id === invoiceId)
+    if (!inv) throw new Error('Invoice not found')
+    const existing = inv.creditNotes || []
+    const totalCredited = existing.reduce((s, cn) => s + (Number(cn.amount) || 0), 0) + (Number(creditNote.amount) || 0)
+    inv.creditNotes = [...existing, { ...creditNote, date: creditNote.date || new Date().toISOString().slice(0, 10), createdAt: Date.now() }]
+    inv.totalCredited = totalCredited
+    localStorage.setItem(demoInvoicesKey(email), JSON.stringify(list))
+    return totalCredited
+  },
+  async getCreditNotes(invoiceId) {
+    const email = this.getCurrentUser()?.email
+    if (!email) return []
+    const inv = demoInvoices(email).find((i) => i.id === invoiceId)
+    return inv?.creditNotes || []
+  },
   async saveContact(contact) {
     const email = this.getCurrentUser()?.email
     if (!email) throw new Error('Not signed in')
     const list = demoContacts(email)
-    const existing = list.find((c) => c.name.trim().toLowerCase() === (contact.name || '').trim().toLowerCase())
-    if (existing) {
-      Object.assign(existing, { phone: contact.phone || '', address: contact.address || '' })
+    const name = (contact.name || '').trim()
+    const existing = list.find((c) => (c.name || '').trim().toLowerCase() === name.toLowerCase())
+    const base = { nameLower: name.toLowerCase(), createdAt: Date.now() }
+    let data
+    if (hasMasterKey()) {
+      const key = await getCryptoKey()
+      const enc = await encryptJson(key, { name, phone: contact.phone || '', address: contact.address || '' })
+      data = { ...base, sensitiveEnc: { iv: enc.iv, data: bytesToBase64(enc.data) } }
     } else {
-      list.push({
-        id: demoRandomId(),
-        name: (contact.name || '').trim(),
-        phone: contact.phone || '',
-        address: contact.address || '',
-        createdAt: Date.now(),
-      })
+      data = { ...base, name, phone: contact.phone || '', address: contact.address || '' }
+    }
+    if (existing) {
+      Object.assign(existing, data)
+    } else {
+      list.push({ id: demoRandomId(), ...data })
     }
     localStorage.setItem(demoContactsKey(email), JSON.stringify(list))
-    return existing || list[list.length - 1]
+    return { name, phone: contact.phone || '', address: contact.address || '', ...(existing || list[list.length - 1]) }
   },
   async queryContacts(search = '') {
     const email = this.getCurrentUser()?.email
     if (!email) return []
-    let list = demoContacts(email)
+    const raw = demoContacts(email)
+    const cryptoKey = hasMasterKey() ? await getCryptoKey() : null
+    const decrypted = []
+    for (const item of raw) {
+      if (item.sensitiveEnc && cryptoKey) {
+        try {
+          const sensitive = await decryptJson(cryptoKey, item.sensitiveEnc.iv, base64ToBytes(item.sensitiveEnc.data))
+          decrypted.push({ id: item.id, ...item, ...sensitive })
+        } catch {
+          const { sensitiveEnc: _se, ...rest } = item
+          decrypted.push(rest)
+        }
+      } else {
+        const { sensitiveEnc: _se, ...rest } = item
+        decrypted.push(rest)
+      }
+    }
     const q = search.trim().toLowerCase()
-    if (q) list = list.filter((c) => (c.name || '').toLowerCase().includes(q))
-    return list.sort((a, b) => (a.name < b.name ? -1 : 1))
+    if (q) return decrypted.filter((c) => (c.name || '').toLowerCase().includes(q))
+    return decrypted.sort((a, b) => (a.name < b.name ? -1 : 1))
   },
   async deleteContact(id) {
     const email = this.getCurrentUser()?.email
@@ -205,14 +304,32 @@ const demo = {
     const email = this.getCurrentUser()?.email
     if (!email) throw new Error('Not signed in')
     return demoInvoices(email).map((rec) => {
-      const { blobB64, ...meta } = rec
+      const { blobB64, sensitiveEnc: _se, ...meta } = rec
       return { meta, blob: base64ToBytes(blobB64) }
     })
   },
   async exportAllContacts() {
     const email = this.getCurrentUser()?.email
     if (!email) throw new Error('Not signed in')
-    return demoContacts(email)
+    const raw = demoContacts(email)
+    const cryptoKey = hasMasterKey() ? await getCryptoKey() : null
+    if (!cryptoKey) return raw
+    const out = []
+    for (const item of raw) {
+      if (item.sensitiveEnc) {
+        try {
+          const sensitive = await decryptJson(cryptoKey, item.sensitiveEnc.iv, base64ToBytes(item.sensitiveEnc.data))
+          const { sensitiveEnc: _se, ...rest } = item
+          out.push({ ...rest, ...sensitive })
+        } catch {
+          const { sensitiveEnc: _se, ...rest } = item
+          out.push(rest)
+        }
+      } else {
+        out.push(item)
+      }
+    }
+    return out
   },
   async importFromBackup(data) {
     const email = this.getCurrentUser()?.email
@@ -373,16 +490,26 @@ const fb = {
     const { db } = await getFirebase()
     const { doc, setDoc, Bytes } = await import('firebase/firestore')
     const id = record.id || crypto.randomUUID()
-    const { blob: _blob, ...meta } = record
+    const { blob: _blob, client, paymentDetail, bankName, ...rest } = record
     const clean = {}
-    for (const key in meta) {
-      if (meta[key] !== undefined) clean[key] = meta[key]
+    for (const key in rest) {
+      if (rest[key] !== undefined) clean[key] = rest[key]
     }
     clean.id = id
-    clean.numberLower = String(meta.number || '').toLowerCase()
+    clean.numberLower = String(rest.number || '').toLowerCase()
     clean.blob = record.blob ? Bytes.fromUint8Array(record.blob) : null
+    if (hasMasterKey()) {
+      const key = await getCryptoKey()
+      const sensitive = { client, paymentDetail, bankName }
+      const enc = await encryptJson(key, sensitive)
+      clean.sensitiveEnc = { iv: enc.iv, data: bytesToBase64(enc.data) }
+    } else {
+      clean.client = client
+      clean.paymentDetail = paymentDetail
+      clean.bankName = bankName
+    }
     await setDoc(doc(db, 'users', uid, 'invoices', id), clean)
-    return { ...meta, id }
+    return { client, paymentDetail, bankName, ...rest, id }
   },
   async queryInvoices(filters = {}) {
     const uid = await fbCurrentUid()
@@ -394,21 +521,38 @@ const fb = {
       limit(1000),
     )
     const snap = await getDocs(q)
-    let list = snap.docs.map((d) => {
+    const cryptoKey = hasMasterKey() ? await getCryptoKey() : null
+    const raw = snap.docs.map((d) => {
       const { blob: _blob, ...rest } = d.data()
       return { id: d.id, ...rest }
     })
-    if (filters.type) list = list.filter((i) => i.type === filters.type)
-    if (filters.number) {
-      const needle = filters.number.trim().toLowerCase()
-      list = list.filter((i) => (i.numberLower || i.number.toLowerCase()).includes(needle))
+    let list = []
+    for (const item of raw) {
+      const out = { ...item }
+      if (item.sensitiveEnc && cryptoKey) {
+        try {
+          const sensitive = await decryptJson(cryptoKey, item.sensitiveEnc.iv, base64ToBytes(item.sensitiveEnc.data))
+          out.client = sensitive.client
+          out.paymentDetail = sensitive.paymentDetail
+          out.bankName = sensitive.bankName
+        } catch { /* leave fields missing */ }
+      }
+      list.push(out)
     }
-    if (filters.from) list = list.filter((i) => i.date >= filters.from)
-    if (filters.to) list = list.filter((i) => i.date <= filters.to)
-    if (filters.client) {
-      const q = filters.client.trim().toLowerCase()
-      list = list.filter((i) => (i.client?.name || i.clientName || '').toLowerCase().includes(q))
-    }
+    list = list.filter((i) => {
+      if (filters.type && i.type !== filters.type) return false
+      if (filters.number) {
+        const needle = filters.number.trim().toLowerCase()
+        if (!(i.numberLower || i.number.toLowerCase()).includes(needle)) return false
+      }
+      if (filters.from && i.date < filters.from) return false
+      if (filters.to && i.date > filters.to) return false
+      if (filters.client) {
+        const needle = filters.client.trim().toLowerCase()
+        if (!(i.client?.name || i.clientName || '').toLowerCase().includes(needle)) return false
+      }
+      return true
+    })
     return list
   },
   async getInvoice(id) {
@@ -418,7 +562,17 @@ const fb = {
     const snap = await getDoc(doc(db, 'users', uid, 'invoices', id))
     if (!snap.exists()) return null
     const data = snap.data()
-    return { meta: { id, ...data, blob: undefined }, blob: data.blob ? data.blob.toUint8Array() : null }
+    const { sensitiveEnc, ...meta } = data
+    if (sensitiveEnc && hasMasterKey()) {
+      try {
+        const key = await getCryptoKey()
+        const sensitive = await decryptJson(key, sensitiveEnc.iv, base64ToBytes(sensitiveEnc.data))
+        meta.client = sensitive.client
+        meta.paymentDetail = sensitive.paymentDetail
+        meta.bankName = sensitive.bankName
+      } catch { /* legacy or key mismatch — leave fields missing */ }
+    }
+    return { meta: { id, ...meta, blob: undefined }, blob: data.blob ? data.blob.toUint8Array() : null }
   },
   async deleteInvoice(id) {
     const uid = await fbCurrentUid()
@@ -432,6 +586,58 @@ const fb = {
     const { doc, updateDoc } = await import('firebase/firestore')
     await updateDoc(doc(db, 'users', uid, 'invoices', id), { status: 'cancelled' })
   },
+  async addPayment(invoiceId, payment) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, getDoc, updateDoc } = await import('firebase/firestore')
+    const ref = doc(db, 'users', uid, 'invoices', invoiceId)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) throw new Error('Invoice not found')
+    const data = snap.data()
+    const existing = data.payments || []
+    const totalPaid = existing.reduce((s, p) => s + (Number(p.amount) || 0), 0) + (Number(payment.amount) || 0)
+    const total = Number(data.total) || 0
+    let paymentStatus = 'partial'
+    if (totalPaid <= 0) paymentStatus = 'unpaid'
+    else if (totalPaid >= total) paymentStatus = 'paid'
+    await updateDoc(ref, {
+      payments: [...existing, { ...payment, date: payment.date || new Date().toISOString().slice(0, 10), createdAt: Date.now() }],
+      paymentStatus,
+    })
+    return paymentStatus
+  },
+  async getPayments(invoiceId) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, getDoc } = await import('firebase/firestore')
+    const snap = await getDoc(doc(db, 'users', uid, 'invoices', invoiceId))
+    if (!snap.exists()) return []
+    return snap.data().payments || []
+  },
+  async issueCreditNote(invoiceId, creditNote) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, getDoc, updateDoc } = await import('firebase/firestore')
+    const ref = doc(db, 'users', uid, 'invoices', invoiceId)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) throw new Error('Invoice not found')
+    const data = snap.data()
+    const existing = data.creditNotes || []
+    const totalCredited = existing.reduce((s, cn) => s + (Number(cn.amount) || 0), 0) + (Number(creditNote.amount) || 0)
+    await updateDoc(ref, {
+      creditNotes: [...existing, { ...creditNote, date: creditNote.date || new Date().toISOString().slice(0, 10), createdAt: Date.now() }],
+      totalCredited,
+    })
+    return totalCredited
+  },
+  async getCreditNotes(invoiceId) {
+    const uid = await fbCurrentUid()
+    const { db } = await getFirebase()
+    const { doc, getDoc } = await import('firebase/firestore')
+    const snap = await getDoc(doc(db, 'users', uid, 'invoices', invoiceId))
+    if (!snap.exists()) return []
+    return snap.data().creditNotes || []
+  },
   async saveContact(contact) {
     const uid = await fbCurrentUid()
     const { db } = await getFirebase()
@@ -440,30 +646,55 @@ const fb = {
     const col = collection(db, 'users', uid, 'contacts')
     const q = query(col, where('nameLower', '==', name.toLowerCase()))
     const snap = await getDocs(q)
-    const data = {
-      name,
-      nameLower: name.toLowerCase(),
-      phone: contact.phone || '',
-      address: contact.address || '',
-      createdAt: Date.now(),
+    const base = { nameLower: name.toLowerCase(), createdAt: Date.now() }
+    let data
+    if (hasMasterKey()) {
+      const key = await getCryptoKey()
+      const enc = await encryptJson(key, { name, phone: contact.phone || '', address: contact.address || '' })
+      data = { ...base, sensitiveEnc: { iv: enc.iv, data: bytesToBase64(enc.data) } }
+    } else {
+      data = { ...base, name, phone: contact.phone || '', address: contact.address || '' }
     }
     if (!snap.empty) {
       const ref = snap.docs[0].ref
-      await updateDoc(ref, { name, nameLower: name.toLowerCase(), phone: data.phone, address: data.address })
-      return { id: snap.docs[0].id, ...data }
+      await updateDoc(ref, data)
+      return { id: snap.docs[0].id, name, phone: contact.phone || '', address: contact.address || '', ...data }
     }
     const ref = await addDoc(col, data)
-    return { id: ref.id, ...data }
+    return { id: ref.id, name, phone: contact.phone || '', address: contact.address || '', ...data }
   },
   async queryContacts(search = '') {
     const uid = await fbCurrentUid()
     const { db } = await getFirebase()
     const { collection, getDocs } = await import('firebase/firestore')
     const snap = await getDocs(collection(db, 'users', uid, 'contacts'))
-    let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const masterKey = hasMasterKey() ? await getCryptoKey() : null
+    const list = snap.docs.map((d) => {
+      const data = d.data()
+      if (data.sensitiveEnc && masterKey) {
+        return { id: d.id, _encrypted: true, _sensitiveEnc: data.sensitiveEnc, ...data }
+      }
+      return { id: d.id, ...data }
+    })
+    const decrypted = []
+    for (const item of list) {
+      if (item._encrypted && masterKey) {
+        try {
+          const sensitive = await decryptJson(masterKey, item._sensitiveEnc.iv, base64ToBytes(item._sensitiveEnc.data))
+          const { _encrypted, _sensitiveEnc, sensitiveEnc, ...rest } = item
+          decrypted.push({ ...rest, ...sensitive })
+        } catch {
+          const { _encrypted, _sensitiveEnc, sensitiveEnc, ...rest } = item
+          decrypted.push(rest)
+        }
+      } else {
+        const { sensitiveEnc, ...rest } = item
+        decrypted.push(rest)
+      }
+    }
     const q = search.trim().toLowerCase()
-    if (q) list = list.filter((c) => (c.name || '').toLowerCase().includes(q))
-    return list.sort((a, b) => (a.name < b.name ? -1 : 1))
+    if (q) return decrypted.filter((c) => (c.name || '').toLowerCase().includes(q))
+    return decrypted.sort((a, b) => (a.name < b.name ? -1 : 1))
   },
   async deleteContact(id) {
     const uid = await fbCurrentUid()
@@ -485,10 +716,9 @@ const fb = {
       if (snap.empty) break
       for (const d of snap.docs) {
         const data = d.data()
-        out.push({
-          meta: { id: d.id, ...data, blob: undefined },
-          blob: data.blob ? data.blob.toUint8Array() : null,
-        })
+        const meta = { id: d.id, ...data, blob: undefined }
+        if (meta.sensitiveEnc) delete meta.sensitiveEnc
+        out.push({ meta, blob: data.blob ? data.blob.toUint8Array() : null })
       }
       if (snap.docs.length < 1000) break
       cursor = snap.docs[snap.docs.length - 1]
@@ -500,7 +730,25 @@ const fb = {
     const { db } = await getFirebase()
     const { collection, getDocs } = await import('firebase/firestore')
     const snap = await getDocs(collection(db, 'users', uid, 'contacts'))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const masterKey = hasMasterKey() ? await getCryptoKey() : null
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    if (!masterKey) return list
+    const out = []
+    for (const item of list) {
+      if (item.sensitiveEnc) {
+        try {
+          const sensitive = await decryptJson(masterKey, item.sensitiveEnc.iv, base64ToBytes(item.sensitiveEnc.data))
+          const { sensitiveEnc, ...rest } = item
+          out.push({ ...rest, ...sensitive })
+        } catch {
+          const { sensitiveEnc, ...rest } = item
+          out.push(rest)
+        }
+      } else {
+        out.push(item)
+      }
+    }
+    return out
   },
   async importFromBackup(data) {
     const uid = await fbCurrentUid()
@@ -597,6 +845,46 @@ const fb = {
       { merge: true },
     )
   },
+}
+
+const BRUTE_WINDOW = 15 * 60 * 1000
+const BRUTE_LIMIT = 5
+
+export async function checkBruteForce(email) {
+  if (!firebaseConfigured) {
+    const raw = localStorage.getItem(`${DEMO_PREFIX}brute_${email}`)
+    if (!raw) return { blocked: false }
+    const { count, lastAttempt } = JSON.parse(raw)
+    if (Date.now() - lastAttempt > BRUTE_WINDOW) {
+      localStorage.removeItem(`${DEMO_PREFIX}brute_${email}`)
+      return { blocked: false }
+    }
+    if (count >= BRUTE_LIMIT) {
+      const wait = Math.ceil((BRUTE_WINDOW - (Date.now() - lastAttempt)) / 1000)
+      return { blocked: true, wait }
+    }
+    return { blocked: false }
+  }
+  return { blocked: false }
+}
+
+export async function recordFailedAttempt(email) {
+  if (!firebaseConfigured) {
+    const key = `${DEMO_PREFIX}brute_${email}`
+    const raw = localStorage.getItem(key)
+    const prev = raw ? JSON.parse(raw) : { count: 0, lastAttempt: 0 }
+    if (Date.now() - prev.lastAttempt > BRUTE_WINDOW) {
+      localStorage.setItem(key, JSON.stringify({ count: 1, lastAttempt: Date.now() }))
+    } else {
+      localStorage.setItem(key, JSON.stringify({ count: prev.count + 1, lastAttempt: Date.now() }))
+    }
+  }
+}
+
+export async function clearBruteForce(email) {
+  if (!firebaseConfigured) {
+    localStorage.removeItem(`${DEMO_PREFIX}brute_${email}`)
+  }
 }
 
 export const backend = firebaseConfigured ? fb : demo

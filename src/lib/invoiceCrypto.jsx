@@ -6,14 +6,8 @@ import {
   decryptBytes,
   bytesToBase64,
   base64ToBytes,
+  getCryptoKey,
 } from './crypto'
-import { getMasterKey } from './session'
-
-export async function getCryptoKey() {
-  const raw = getMasterKey()
-  if (!raw) throw new Error('Session locked. Please sign in again.')
-  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt'])
-}
 
 export async function buildEncryptedBlob(record) {
   const key = await getCryptoKey()

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { backend } from '../lib/store'
+import { backend, checkBruteForce, recordFailedAttempt, clearBruteForce } from '../lib/store'
 import { setMasterKey } from '../lib/session'
 import { Btn, Field, inputCls, ErrorBox } from '../components/ui'
 import logoUrl from '../assets/megamind-logo-white.png'
@@ -54,18 +54,28 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
       setError('Passwords do not match')
       return
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
     setBusy(true)
     onFlowStart?.()
     try {
+      if (mode === 'login') {
+        const brute = await checkBruteForce(email.trim().toLowerCase())
+        if (brute.blocked) {
+          setError(`Too many failed attempts. Try again in ${brute.wait} seconds.`)
+          setBusy(false)
+          onFlowEnd?.()
+          return
+        }
+      }
       const res =
         mode === 'signup'
           ? await backend.signUp(email.trim().toLowerCase(), password)
           : await backend.signIn(email.trim().toLowerCase(), password)
       setFailed(0)
+      await clearBruteForce(email.trim().toLowerCase())
       setMasterKey(res.masterKey)
       if (res.recovery) {
         setPendingMasterKey(res.masterKey)
@@ -75,17 +85,10 @@ export default function Login({ onAuthed, onFlowStart, onFlowEnd }) {
       }
     } catch (err) {
       if (mode === 'login') {
+        await recordFailedAttempt(email.trim().toLowerCase())
         setFailed((f) => f + 1)
-        if (failed + 1 >= 5) {
-          const wait = Math.min((failed + 1) * 5, 60)
-          setError(`Too many attempts. Try again in ${wait} seconds.`)
-          await new Promise((r) => setTimeout(r, wait * 1000))
-        } else {
-          setError(err.message || 'Something went wrong')
-        }
-      } else {
-        setError(err.message || 'Something went wrong')
       }
+      setError(err.message || 'Something went wrong')
     } finally {
       setBusy(false)
       onFlowEnd?.()

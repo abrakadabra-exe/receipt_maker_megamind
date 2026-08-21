@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { Btn, Field, inputCls, Card, SectionTitle, ErrorBox } from '../components/ui'
 
 export default function Contacts() {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [search, setSearch] = useState('')
   const [loaded, setLoaded] = useState(false)
@@ -103,6 +105,7 @@ export default function Contacts() {
                 </p>
               </div>
               <div className="flex gap-1.5">
+                <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => navigate('/search', { state: { client: c.name } })}>History</Btn>
                 <Btn variant="outline" className="!px-3 !py-2 text-sm" onClick={() => startEdit(c)}>Edit</Btn>
                 <Btn variant="danger" className="!px-3 !py-2 text-sm" onClick={() => remove(c)}>Delete</Btn>
               </div>

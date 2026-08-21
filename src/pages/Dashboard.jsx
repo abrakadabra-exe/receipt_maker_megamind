@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { backend } from '../lib/store'
 import { TYPES } from '../lib/numbers'
+import { bdt } from '../lib/money'
 
 const ICONS = {
   service: (
@@ -31,9 +32,16 @@ const ICONS = {
 
 export default function Dashboard({ user }) {
   const [username, setUsername] = useState('')
+  const [outstanding, setOutstanding] = useState(null)
 
   useEffect(() => {
     backend.getUsername().then(setUsername).catch(() => {})
+    backend.queryInvoices({}).then((list) => {
+      const total = list
+        .filter((i) => i.status !== 'cancelled' && i.paymentStatus !== 'paid')
+        .reduce((s, i) => s + (Number(i.total) || 0), 0)
+      setOutstanding(total)
+    }).catch(() => {})
   }, [])
 
   return (
@@ -46,6 +54,14 @@ export default function Dashboard({ user }) {
           encrypted on this device and stored securely in the cloud.
         </p>
       </div>
+
+      {outstanding !== null && outstanding > 0 && (
+        <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+          <p className="text-xs font-semibold tracking-wide text-orange-600 uppercase">Outstanding balance</p>
+          <p className="mt-1 text-2xl font-bold text-orange-700">{bdt(outstanding)}</p>
+          <p className="mt-0.5 text-xs text-orange-500">Unpaid or partially paid invoices</p>
+        </div>
+      )}
 
       <h2 className="mt-8 mb-3 text-sm font-bold tracking-wide text-navy-700 uppercase">Create invoice</h2>
       <div className="grid gap-4 sm:grid-cols-3">
